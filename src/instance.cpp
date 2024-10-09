@@ -4,48 +4,15 @@ Instance::Instance(const std::string& name, const std::string& json_file)
 	: name(name)
 {
 	this->parse_json(json_file);
- 
-	for (uint i = 0; i < this->ops.size(); i++) {
-		Operation& op = this->ops[i];
-		if (op.pred.size() == 1 && op.succ.size() == 1) {
-			std::cout << "train " << op.train_id
-				<< ", op " << op.op_id
-				<< std::endl;
-		}
+
+	uint n = 0;
+	uint k = 0;
+	for (uint i = 0; i < this->n_res; i++) {
+		Resource& res = this->resources[i];
+		std::cout << "res " << i << " : trains " << res.trains << std::endl;
 	}
 }
 
-
-void Instance::build_paths()
-{
-	for (uint train_id = 0; train_id < this->trains.size(); train_id++) {
-		std::vector<uint> start_vec({this->trains[train_id].begin_idx});
-		this->build_path_rec(start_vec, train_id);
-		std::cout << train_id << ": "<< this->trains[train_id].paths.size() << std::endl;
-	}
-}
-
-void Instance::build_path_rec(const std::vector<uint>& path, uint train_id)
-{
-	const Operation& last_op = this->ops[path.back()];
-	if (last_op.succ.size() == 0) {
-		std::vector<std::vector<uint>>& train_paths = this->trains[train_id].paths;
-		if (std::find(train_paths.begin(), train_paths.end(), path) == train_paths.end()) {
-			train_paths.push_back(path);
-		}
-		// train_paths.push_back(path);
-		// std::cout << train_paths.size() << std::endl;
-		// print_vec(std::cout, path);
-		// std::cout << std::endl;
-	}
-	else {
-		for (uint succ_idx : last_op.succ) {
-			std::vector<uint> new_path = path;
-			new_path.push_back(succ_idx);
-			this->build_path_rec(new_path, train_id);
-		}
-	}
-}
 
 void Instance::parse_json(const std::string& json_file)
 {
@@ -53,6 +20,12 @@ void Instance::parse_json(const std::string& json_file)
 
 	this->trains.clear();
 	this->ops.clear();
+	this->objectives.clear();
+	this->resources.clear();
+
+	this->n_res = 0;
+	this->n_train = 0;
+	this->n_branching = 0;
 	
 	uint train_id = 0;
 	uint op_id = 0;
@@ -62,6 +35,7 @@ void Instance::parse_json(const std::string& json_file)
 	for (auto train_json : td_json["trains"]) {
 		op_id = 0;
 		Train train;
+		this->n_train++;
 		train.begin_idx = idx;
 
 		this->op_idx_map.push_back(std::vector<uint>());
@@ -84,10 +58,15 @@ void Instance::parse_json(const std::string& json_file)
 
 			// add resource to map
 			if (op_json.contains("resources")) {
-				for (auto res : op_json["resources"]) {
-					std::string res_name = res["resource"];
-					if (this->res_idx_map.find(res_name) == this->res_idx_map.end())
+				for (auto res_json : op_json["resources"]) {
+					std::string res_name = res_json["resource"];
+					if (this->res_idx_map.find(res_name) == this->res_idx_map.end()) {
+						Resource res;
+						res.trains.clear();
+						res.n_trains = 0;
+						this->resources.push_back(res);
 						this->res_idx_map[res_name] = this->n_res++;
+					}
 				}
 			}
 
@@ -116,22 +95,35 @@ void Instance::parse_json(const std::string& json_file)
 			Operation& op = this->ops[idx];
 
 			op.succ.clear();
+			op.n_succ = 0;
 			for (uint succ_id : op_json["successors"]) {
 				op.succ.push_back(op_idx_map[train_id][succ_id]);
-				this->ops[op_idx_map[train_id][succ_id]].pred.push_back(idx);
+				op.n_succ++;
+				// this->ops[op_idx_map[train_id][succ_id]].pred.push_back(idx);
+			}
+
+			// set switches
+			if (op.n_succ > 1) {
+				op.branching_idx = this->n_branching++;
+				this->branch_idx_map.push_back(idx);
 			}
 
 			// add resource to op
 			op.res.clear();
 			op.res_release_time.clear();
 			if (op_json.contains("resources")) {
-				for (auto res : op_json["resources"]) {
-					std::string res_name = res["resource"];
-					op.res.push_back(this->res_idx_map.at(res_name));
+				for (auto res_json : op_json["resources"]) {
+					std::string res_name = res_json["resource"];
+					uint res_idx = this->res_idx_map.at(res_name);
+					Resource& res = this->resources[res_idx];
+					
+					op.res.push_back(res_idx);
+					res.trains.push_back(train_id);
+					res.n_trains++;
 
 					uint release_time = 0;
-					if (res.contains("release_time"))
-						release_time = res["release_time"];
+					if (res_json.contains("release_time"))
+						release_time = res_json["release_time"];
 					op.res_release_time.push_back(release_time);
 				}
 			}
@@ -167,6 +159,7 @@ void Instance::parse_json(const std::string& json_file)
 		}
 
 		this->objectives.push_back(obj);
+		this->ops[idx].objective = &this->objectives[this->objectives.size()-1];
 	}
 }
 
