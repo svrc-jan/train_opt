@@ -1,18 +1,24 @@
 #include "instance.hpp"
 
-Instance::Instance(const std::string& name, const std::string& json_file)
+Instance::Instance(const std::string& name, const std::string& json_file, int seed)
 	: name(name)
 {
 	this->parse_json(json_file);
+	this->init_rng(seed);
 
 	uint n = 0;
 	uint k = 0;
-	for (uint i = 0; i < this->n_res; i++) {
-		Resource& res = this->resources[i];
-		std::cout << "res " << i << " : trains " << res.trains << std::endl;
-	}
+	// for (uint i = 0; i < this->n_res; i++) {
+	// 	Resource& res = this->resources[i];
+	// 	std::cout << "res " << i << " : trains " << res.trains << std::endl;
+	// }
+
 }
 
+Instance::~Instance()
+{
+	delete this->rng;
+}
 
 void Instance::parse_json(const std::string& json_file)
 {
@@ -25,7 +31,7 @@ void Instance::parse_json(const std::string& json_file)
 
 	this->n_res = 0;
 	this->n_train = 0;
-	this->n_branching = 0;
+	this->n_fork = 0;
 	
 	uint train_id = 0;
 	uint op_id = 0;
@@ -36,7 +42,7 @@ void Instance::parse_json(const std::string& json_file)
 		op_id = 0;
 		Train train;
 		this->n_train++;
-		train.begin_idx = idx;
+		train.op_begin = idx;
 
 		this->op_idx_map.push_back(std::vector<uint>());
 
@@ -75,7 +81,7 @@ void Instance::parse_json(const std::string& json_file)
 			idx++;
 		}
 
-		train.end_idx = idx;
+		train.op_end = idx;
 
 		this->trains.push_back(train);
 		train_id++;
@@ -89,7 +95,9 @@ void Instance::parse_json(const std::string& json_file)
 	idx = 0;
 	for (auto train_json : td_json["trains"]) {
 		op_id = 0;
-		// Train& train = this->trains[train_id];
+		Train& train = this->trains[train_id];
+
+		train.fork_begin = this->n_fork;
 
 		for (auto op_json : train_json) {
 			Operation& op = this->ops[idx];
@@ -102,10 +110,10 @@ void Instance::parse_json(const std::string& json_file)
 				// this->ops[op_idx_map[train_id][succ_id]].pred.push_back(idx);
 			}
 
-			// set switches
+			// set forks
 			if (op.n_succ > 1) {
-				op.branching_idx = this->n_branching++;
-				this->branch_idx_map.push_back(idx);
+				op.fork_idx = this->n_fork++;
+				this->fork_idx_map.push_back(idx);
 			}
 
 			// add resource to op
@@ -131,6 +139,8 @@ void Instance::parse_json(const std::string& json_file)
 			op_id++;
 			idx++;
 		}
+
+		train.fork_end = this->n_fork;
 		train_id++;
 	}
 
@@ -162,4 +172,14 @@ void Instance::parse_json(const std::string& json_file)
 		this->ops[idx].objective = &this->objectives[this->objectives.size()-1];
 	}
 }
+
+void Instance::init_rng(uint seed)
+{
+	if (seed == 0) {
+		std::random_device rd;
+		seed = rd();
+	}
+	this->rng = new std::mt19937(seed);
+}
+
 

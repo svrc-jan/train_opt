@@ -2,13 +2,18 @@
 
 #include <vector>
 
-#include "limits.h"
+#include <limits.h>
+#include <random>
+
 #include "utils.hpp"
 
 struct Train
 {
-	uint begin_idx = -1;
-	uint end_idx = -1;
+	uint op_begin = -1;
+	uint op_end = -1;
+
+	uint fork_begin = -1;
+	uint fork_end = -1;
 };
 
 struct Objective {
@@ -29,7 +34,7 @@ struct Operation
 
 	std::vector<uint> succ;
 	uint n_succ = 0;
-	uint branching_idx = -1;
+	uint fork_idx = -1;
 
 	// std::vector<uint> pred;
 	std::vector<uint> res;
@@ -49,7 +54,8 @@ class Instance
 public:
 	std::string name = "";
 
-	Instance(const std::string& name, const std::string& json_file);
+	Instance(const std::string& name, const std::string& json_file, int seed=0);
+	~Instance();
 
 	std::vector<Train> trains;
 	std::vector<Operation> ops;
@@ -58,12 +64,14 @@ public:
 
 	std::vector<std::vector<uint>> op_idx_map;
 	std::map<std::string, uint> res_idx_map;
-	std::vector<uint> branch_idx_map;
+	std::vector<uint> fork_idx_map;
 
 	uint n_res = 0;
 	uint n_train = 0;
-	uint n_branching = 0;
+	uint n_fork = 0;
 	
+	std::mt19937* rng;
+	void init_rng(uint seed);
 
 private:
 	void parse_json(const std::string& json_file);

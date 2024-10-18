@@ -23,5 +23,8 @@ add_library(utils src/utils.cpp)
 add_library(instance src/instance.cpp)
 target_link_libraries(instance PRIVATE utils)
 
+add_library(solution src/solution.cpp)
+target_link_libraries(solution PRIVATE instance utils)
+
 add_executable(instance_test apps/instance_test.cpp)
-target_link_libraries(instance_test PRIVATE instance)
+target_link_libraries(instance_test PRIVATE solution instance)
