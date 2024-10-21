@@ -34,8 +34,8 @@ void Solution::build_path(const uint train_idx)
 			succ_idx = op.succ[0];
 		}
 		else {
-			succ_idx = op.succ[this->fork_choice[op.fork_id]];
-			this->fork_used[op.fork_id] = true;
+			succ_idx = op.succ[this->fork_choice[op.fork_idx]];
+			this->fork_used[op.fork_idx] = true;
 		}
 
 		path.push_back(succ_idx);

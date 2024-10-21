@@ -1,5 +1,6 @@
 #include "instance.hpp"
 #include "solution.hpp"
+#include "plan.hpp"
 
 int main(int argc, char const *argv[])
 {
@@ -21,6 +22,8 @@ int main(int argc, char const *argv[])
 			std::cout << sol.paths[t] << " ";
 		}
 		std::cout << std::endl;
+
+		Plan plan(&sol);
 	}
 
 	return 0;

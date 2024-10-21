@@ -99,7 +99,7 @@ void Instance::parse_json(const std::string& json_file)
 
 			// add resource to op
 			op.n_res = 0;
-			op.res_id.clear();
+			op.res_idx.clear();
 			op.res_release_time.clear();
 			if (op_json.contains("resources")) {
 				for (auto res_json : op_json["resources"]) {
@@ -107,7 +107,7 @@ void Instance::parse_json(const std::string& json_file)
 
 					uint res_idx = this->res_idx_map.at(res_name);
 					
-					op.res_id.push_back(res_idx);
+					op.res_idx.push_back(res_idx);
 					
 					uint release_time = 0;
 					if (res_json.contains("release_time"))

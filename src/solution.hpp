@@ -25,6 +25,9 @@ public:
 	inline const Operation& get_op(const uint train_idx, const uint op_idx)
 	{	return this->inst->ops[train_idx][op_idx]; }
 
+	inline uint get_path_op_idx(const uint train_idx, const uint path_id)
+	{	return this->paths[train_idx][path_id]; }
+
 	inline const Operation& get_path_op(const uint train_idx, const uint path_id)
 	{	return this->inst->ops[train_idx][this->paths[train_idx][path_id]]; }
 

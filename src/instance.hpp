@@ -20,7 +20,7 @@ struct Operation
 
 	// std::vector<uint> pred;
 	uint n_res = 0;
-	std::vector<uint> res_id;
+	std::vector<uint> res_idx;
 	std::vector<uint> res_release_time;
 
 	uint obj_id = -1;
