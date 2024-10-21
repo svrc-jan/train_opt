@@ -6,10 +6,10 @@ Solution::Solution(const Instance *inst)
 {
 }
 
-void Solution::build_path(const uint train_id)
+void Solution::build_path(const uint train_idx)
 {
-	std::vector<uint>& path = this->paths[train_id];
-	auto train = this->get_train(train_id); 
+	std::vector<uint>& path = this->paths[train_idx];
+	auto train = this->get_train(train_idx); 
 
 	for (uint fork_idx = train.fork_begin; 
 		fork_idx < train.fork_end; fork_idx++) {
@@ -21,7 +21,7 @@ void Solution::build_path(const uint train_id)
 	path.push_back(0);
 
 	while (true) {
-		auto op = this->get_op(train_id, path.back());
+		auto op = this->get_op(train_idx, path.back());
 
 		// last element
 		if (op.n_succ == 0) {
@@ -46,11 +46,11 @@ void Solution::build_path(const uint train_id)
 void Solution::build_all_paths()
 {
 	this->paths.clear();
-	for (uint train_id = 0; train_id < this->n_train; train_id++) {
-		if (this->paths.size() <= train_id) {
+	for (uint train_idx = 0; train_idx < this->n_train; train_idx++) {
+		if (this->paths.size() <= train_idx) {
 			this->paths.push_back(std::vector<uint>());
 		}
-		this->build_path(train_id);
+		this->build_path(train_idx);
 	}
 }
 

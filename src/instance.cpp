@@ -30,7 +30,7 @@ void Instance::parse_json(const std::string& json_file)
 	this->n_res = 0;
 	this->n_train = 0;
 	
-	uint train_id = 0;
+	uint train_idx = 0;
 
 	// build basic operation info and resource map
 	for (auto train_json : td_json["trains"]) {
@@ -49,7 +49,7 @@ void Instance::parse_json(const std::string& json_file)
 			if (op_json.contains("start_ub"))
 				op.start_ub = op_json["start_ub"];
 
-			this->ops[train_id].push_back(op);
+			this->ops[train_idx].push_back(op);
 			train.n_ops++;
 
 			// add resource to map
@@ -64,37 +64,37 @@ void Instance::parse_json(const std::string& json_file)
 		}
 
 		this->trains.push_back(train);
-		train_id++;
+		train_idx++;
 	}
-	this->n_train = train_id;
+	this->n_train = train_idx;
 
 	this->n_fork = 0;
 
 	// add succesors and resources
-	uint op_id;
-	train_id = 0;
+	uint op_idx;
+	train_idx = 0;
 	for (auto train_json : td_json["trains"]) {
-		Train& train = this->trains[train_id];
+		Train& train = this->trains[train_idx];
 		train.fork_begin = this->n_fork;
-		op_id = 0;
+		op_idx = 0;
 		for (auto op_json : train_json) {
-			Operation& op = this->ops[train_id][op_id];
+			Operation& op = this->ops[train_idx][op_idx];
 
 			for (uint succ_id : op_json["successors"]) {
 				op.succ.push_back(succ_id);
 				op.n_succ++;
-				// this->ops[op_idx_map[train_id][succ_id]].pred.push_back(idx);
+				// this->ops[op_idxx_map[train_idx][succ_id]].pred.push_back(idx);
 			}
 
 			// set forks
 			if (op.n_succ > 1) {
 				Fork fork;
-				fork.train_id = train_id;
-				fork.op_id = op_id;
+				fork.train_idx = train_idx;
+				fork.op_idx = op_idx;
 
 				this->forks.push_back(fork);
 
-				op.fork_id = this->n_fork++;
+				op.fork_idx = this->n_fork++;
 			}
 
 			// add resource to op
@@ -118,10 +118,10 @@ void Instance::parse_json(const std::string& json_file)
 				}
 			}
 
-			op_id++;
+			op_idx++;
 		}
 		train.fork_end = this->n_fork;
-		train_id++;
+		train_idx++;
 	}
 
 
@@ -132,8 +132,8 @@ void Instance::parse_json(const std::string& json_file)
 
 		Objective obj;
 
-		obj.train_id = objective_json["train"];
-		obj.op_id = objective_json["operation"];
+		obj.train_idx = objective_json["train"];
+		obj.op_idx = objective_json["operation"];
 
 		if (objective_json.contains("threshold")) {
 			obj.threshold = objective_json["threshold"];
@@ -152,7 +152,7 @@ void Instance::parse_json(const std::string& json_file)
 
 	for (uint obj_id = 0; obj_id < this->objectives.size(); obj_id++) {
 		Objective& obj = this->objectives[obj_id];
-		this->ops[obj.train_id][obj.op_id].obj_id = obj_id;
+		this->ops[obj.train_idx][obj.op_idx].obj_id = obj_id;
 	}
 }
 

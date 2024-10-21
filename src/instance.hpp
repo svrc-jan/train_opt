@@ -16,7 +16,7 @@ struct Operation
 
 	std::vector<uint> succ;
 	uint n_succ = 0;
-	uint fork_id = -1;
+	uint fork_idx = -1;
 
 	// std::vector<uint> pred;
 	uint n_res = 0;
@@ -36,14 +36,14 @@ struct Train
 
 struct Fork
 {
-	uint train_id = -1;
-	uint op_id = -1;
+	uint train_idx = -1;
+	uint op_idx = -1;
 };
 
 struct Objective
 {
-	uint train_id = -1;
-	uint op_id = -1;
+	uint train_idx = -1;
+	uint op_idx = -1;
 
 	uint threshold = 0;
 	uint increment = 0;
@@ -73,10 +73,10 @@ public:
 	std::mt19937* rng;
 	void init_rng(uint seed);
 
-	const std::vector<uint>& get_fork_succ(const uint fork_id);
+	const std::vector<uint>& get_fork_succ(const uint fork_idx);
 
 	const Operation& get_op(const Fork& fork)
-	{	return this->ops[fork.train_id][fork.op_id]; }
+	{	return this->ops[fork.train_idx][fork.op_idx]; }
 
 private:
 	void parse_json(const std::string& json_file);
