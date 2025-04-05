@@ -6,13 +6,8 @@ Instance::Instance(const std::string& name, const std::string& json_file, int se
 	this->parse_json(json_file);
 	this->init_rng(seed);
 
-	uint n = 0;
-	uint k = 0;
-	// for (uint i = 0; i < this->n_res; i++) {
-	// 	Resource& res = this->resources[i];
-	// 	std::cout << "res " << i << " : trains " << res.trains << std::endl;
-	// }
-
+	int n = 0;
+	int k = 0;
 }
 
 Instance::~Instance()
@@ -25,19 +20,10 @@ void Instance::parse_json(const std::string& json_file)
 	json td_json = get_json_file(json_file);
 
 	this->ops.clear();
-	this->trains.clear();
-
-	this->n_res = 0;
-	this->n_train = 0;
-	
-	uint train_idx = 0;
+	this->res_idx_map.clear();
 
 	// build basic operation info and resource map
 	for (auto train_json : td_json["trains"]) {
-		Train train;
-
-		this->ops.push_back(std::vector<Operation>());
-
 		for (auto op_json : train_json) {
 			Operation op;
 
@@ -49,8 +35,7 @@ void Instance::parse_json(const std::string& json_file)
 			if (op_json.contains("start_ub"))
 				op.start_ub = op_json["start_ub"];
 
-			this->ops[train_idx].push_back(op);
-			train.n_ops++;
+			this->ops.push_back(op);
 
 			// add resource to map
 			if (op_json.contains("resources")) {
@@ -62,39 +47,26 @@ void Instance::parse_json(const std::string& json_file)
 				}
 			}
 		}
-
-		this->trains.push_back(train);
-		train_idx++;
 	}
-	this->n_train = train_idx;
 
-	this->n_fork = 0;
+	this->n_op = this->ops.size();
+	this->n_res = this->res_idx_map.size();
 
-	// add succesors and resources
-	uint op_idx;
-	train_idx = 0;
+	this->trains.clear();
+	int op_idx = 0;
+	
+	// add succesors and resources, index trains
 	for (auto train_json : td_json["trains"]) {
-		Train& train = this->trains[train_idx];
-		train.fork_begin = this->n_fork;
-		op_idx = 0;
+		Train train;
+		train.inst = this;
+
+		train.begin_idx = op_idx;
 		for (auto op_json : train_json) {
-			Operation& op = this->ops[train_idx][op_idx];
+			Operation& op = this->ops[op_idx];
 
-			for (uint succ_id : op_json["successors"]) {
-				op.succ.push_back(succ_id);
+			for (int succ_id : op_json["successors"]) {
+				op.succ.push_back(train.begin_idx + succ_id);
 				op.n_succ++;
-				// this->ops[op_idxx_map[train_idx][succ_id]].pred.push_back(idx);
-			}
-
-			// set forks
-			if (op.n_succ > 1) {
-				Fork fork;
-				fork.train_idx = train_idx;
-				fork.op_idx = op_idx;
-
-				this->forks.push_back(fork);
-
-				op.fork_idx = this->n_fork++;
 			}
 
 			// add resource to op
@@ -105,11 +77,12 @@ void Instance::parse_json(const std::string& json_file)
 				for (auto res_json : op_json["resources"]) {
 					std::string res_name = res_json["resource"];
 
-					uint res_idx = this->res_idx_map.at(res_name);
+					int res_idx = this->res_idx_map.at(res_name);
 					
 					op.res_idx.push_back(res_idx);
-					
-					uint release_time = 0;
+					op.res_mask |= 1U << res_idx;
+
+					int release_time = 0;
 					if (res_json.contains("release_time"))
 						release_time = res_json["release_time"];
 					op.res_release_time.push_back(release_time);
@@ -117,23 +90,25 @@ void Instance::parse_json(const std::string& json_file)
 					op.n_res++;
 				}
 			}
-
 			op_idx++;
 		}
-		train.fork_end = this->n_fork;
-		train_idx++;
+
+		train.end_idx = op_idx;
+		this->trains.push_back(train);
 	}
 
+	this->n_train = this->trains.size();
 
 	this->objectives.clear();
 	for (auto objective_json : td_json["objective"]) {
-		if (objective_json["type"] != "op_delay")
+		if (objective_json["type"] != "op_delay") {
 			continue;
+		}
 
 		Objective obj;
 
-		obj.train_idx = objective_json["train"];
-		obj.op_idx = objective_json["operation"];
+		int obj_train = objective_json["train"];
+		int obj_op = objective_json["operation"];
 
 		if (objective_json.contains("threshold")) {
 			obj.threshold = objective_json["threshold"];
@@ -146,14 +121,11 @@ void Instance::parse_json(const std::string& json_file)
 		if (objective_json.contains("coeff")) {
 			obj.coeff = objective_json["coeff"];
 		}
+		assert(obj_train < this->n_train);
 
 		this->objectives.push_back(obj);
 	}
 
-	for (uint obj_id = 0; obj_id < this->objectives.size(); obj_id++) {
-		Objective& obj = this->objectives[obj_id];
-		this->ops[obj.train_idx][obj.op_idx].obj_id = obj_id;
-	}
 }
 
 void Instance::init_rng(uint seed)

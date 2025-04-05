@@ -4,12 +4,15 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <boost/multiprecision/cpp_int.hpp>
 
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
 #define VEC_TRUNCATE_SIZE 0
+
+typedef boost::multiprecision::uint256_t mask_t;
 
 bool file_exists(const std::string& name);
 

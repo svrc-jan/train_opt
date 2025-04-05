@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.11-3.18)
 
 project(meta_opt)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(GCC_COVERAGE_COMPILE_FLAGS "-W -g")
@@ -23,11 +23,8 @@ add_library(utils src/utils.cpp)
 add_library(instance src/instance.cpp)
 target_link_libraries(instance PRIVATE utils)
 
-add_library(solution src/solution.cpp)
-target_link_libraries(solution PRIVATE instance utils)
-
-add_library(plan src/plan.cpp)
-target_link_libraries(plan PRIVATE instance solution utils)
+add_library(backtrack src/backtrack.cpp)
+target_link_libraries(backtrack PRIVATE instance utils)
 
 add_executable(instance_test apps/instance_test.cpp)
-target_link_libraries(instance_test PRIVATE solution instance plan)
+target_link_libraries(instance_test PRIVATE backtrack instance)

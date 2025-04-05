@@ -2,54 +2,66 @@
 
 #include <vector>
 
-#include <limits.h>
+#include <limits>
 #include <random>
 
 #include "utils.hpp"
 
+struct Objective
+{
+	int threshold = 0;
+	int increment = 0;
+	int coeff = 0;
+};
 
 struct Operation
 {
-	uint dur = 0;
-	uint start_lb = 0;
-	uint start_ub = -1;
+	int train_id = -1;
+	int op_id = -1;
 
-	std::vector<uint> succ;
-	uint n_succ = 0;
-	uint fork_idx = -1;
+	int dur = 0;
+	int start_lb = 0;
+	int start_ub = std::numeric_limits<int>::max();
 
-	// std::vector<uint> pred;
-	uint n_res = 0;
-	std::vector<uint> res_idx;
-	std::vector<uint> res_release_time;
+	int n_succ = 0;
+	std::vector<int> succ;
 
-	uint obj_id = -1;
+	int n_prev = 0;
+	std::vector<int> prev;
+
+	int n_res = 0;
+	std::vector<int> res_idx;
+	std::vector<int> res_release_time;
+	mask_t res_mask = 0;
+
+	Objective *obj = nullptr;
 };
+
+
+
 
 
 struct Train
 {
-	uint n_ops = 0;
-	uint fork_begin = -1;
-	uint fork_end = -1;
+	Instance *inst = nullptr;
+	int begin_idx = -1;
+	int end_idx = -1;
+
+	std::vector<Operation>::iterator begin()
+	{
+		return this->inst->ops.begin() + this->begin_idx;
+	}
+
+	std::vector<Operation>::iterator end()
+	{
+		return this->inst->ops.begin() + this->end_idx;
+	}
+
+	Operation& operator[](int idx)
+	{
+		return *(this->begin() + idx);
+	}
 };
-
-struct Fork
-{
-	uint train_idx = -1;
-	uint op_idx = -1;
-};
-
-struct Objective
-{
-	uint train_idx = -1;
-	uint op_idx = -1;
-
-	uint threshold = 0;
-	uint increment = 0;
-	uint coeff = 0;
-};
-
 
 class Instance
 {
@@ -59,24 +71,17 @@ public:
 	Instance(const std::string& name, const std::string& json_file, int seed=0);
 	~Instance();
 
-	std::vector<std::vector<Operation>> ops;
+	std::vector<Operation> ops;
 	std::vector<Train> trains;
-	std::vector<Fork> forks;
 	std::vector<Objective> objectives;
+	std::unordered_map<std::string, uint> res_idx_map;
 
-	std::map<std::string, uint> res_idx_map;
-
-	uint n_res = 0;
-	uint n_train = 0;
-	uint n_fork = 0;
+	int n_op = 0; 
+	int n_res = 0;
+	int n_train = 0;
 	
 	std::mt19937* rng;
 	void init_rng(uint seed);
-
-	const std::vector<uint>& get_fork_succ(const uint fork_idx);
-
-	const Operation& get_op(const Fork& fork)
-	{	return this->ops[fork.train_idx][fork.op_idx]; }
 
 private:
 	void parse_json(const std::string& json_file);
