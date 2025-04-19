@@ -29,19 +29,19 @@ void Backtrack::get_op_start(Op_st& op_st, std::vector<int>& train_end,
     }
 
     bool res_locked = false;
-    for (int res_idx : succ.res_idx) {
-        if (res[res_idx] < 0) {
-            res_locked = true;
-            break;
-        }
+    // for (int res_idx : succ.res_idx) {
+    //     if (res[res_idx] < 0) {
+    //         res_locked = true;
+    //         break;
+    //     }
 
-        op_st.start = std::max(op_st.start, res[res_idx]);
+    //     op_st.start = std::max(op_st.start, res[res_idx]);
 
-        if (op_st.start > succ.start_ub) {
-            op_st.start = -2;
-            return;
-        }
-    }
+    //     if (op_st.start > succ.start_ub) {
+    //         op_st.start = -2;
+    //         return;
+    //     }
+    // }
 
     if (res_locked) {
         op_st.start = -1;
@@ -88,22 +88,22 @@ bool Backtrack::rec_call(std::vector<Op_st>& ops, std::vector<int>& train_op,
 
         trains_done = false;
 
-        for (int succ_idx : this->inst.ops[train_op[train_idx]].succ) {
-            Op_st op_st;
-            op_st.op_idx = succ_idx;
-            op_st.train_idx = train_idx;
+        // for (int succ_idx : this->inst.ops[train_op[train_idx]].succ) {
+        //     Op_st op_st;
+        //     op_st.op_idx = succ_idx;
+        //     op_st.train_idx = train_idx;
 
-            this->get_op_start(op_st, train_end, res, start);
+        //     this->get_op_start(op_st, train_end, res, start);
 
-            if (op_st.start == -2) {        
-                std::cout << "start ub reached" << std::endl;
-                return false;
-            }
+        //     if (op_st.start == -2) {        
+        //         std::cout << "start ub reached" << std::endl;
+        //         return false;
+        //     }
 
-            if (op_st.start >= 0) {
-                ops_q.push(op_st);
-            }
-        }
+        //     if (op_st.start >= 0) {
+        //         ops_q.push(op_st);
+        //     }
+        // }
     }
 
     if (trains_done) {
@@ -122,22 +122,22 @@ bool Backtrack::rec_call(std::vector<Op_st>& ops, std::vector<int>& train_op,
         const Operation& next = this->inst.ops[op_st.op_idx];
 
         // unlock prev resources
-        if (prev_idx >= 0) {
-            for (int i = 0 ; i < prev.n_res; i++) {
-                int res_idx = prev.res_idx[i];
-                assert(res[res_idx] == -1);
-                // old_res[res_idx] = res[res_idx];
-                res[res_idx] = op_st.start + prev.res_release_time[i];
-            }
-        }
+        // if (prev_idx >= 0) {
+        //     for (int i = 0 ; i < prev.n_res; i++) {
+        //         int res_idx = prev.res_idx[i];
+        //         assert(res[res_idx] == -1);
+        //         // old_res[res_idx] = res[res_idx];
+        //         res[res_idx] = op_st.start + prev.res_release_time[i];
+        //     }
+        // }
 
 
         // lock next resources
-        for (int res_idx : next.res_idx) {
-            assert(res[res_idx] != -1);
-            old_res[res_idx] = res[res_idx];
-            res[res_idx] = -1;
-        }
+        // for (int res_idx : next.res_idx) {
+        //     assert(res[res_idx] != -1);
+        //     old_res[res_idx] = res[res_idx];
+        //     res[res_idx] = -1;
+        // }
 
         train_op[op_st.train_idx] = op_st.op_idx;
         train_end[op_st.train_idx] = op_st.start + next.dur;
@@ -156,16 +156,16 @@ bool Backtrack::rec_call(std::vector<Op_st>& ops, std::vector<int>& train_op,
 
 
         // unlock next resources
-        for (int res_idx : next.res_idx) {
-            res[res_idx] = old_res[res_idx];
-        }
+        // for (int res_idx : next.res_idx) {
+        //     res[res_idx] = old_res[res_idx];
+        // }
 
-        // prev resources
-        if (prev_idx >= 0) {
-            for (int res_idx : prev.res_idx) {
-                res[res_idx] = -1;
-            }
-        }
+        // // prev resources
+        // if (prev_idx >= 0) {
+        //     for (int res_idx : prev.res_idx) {
+        //         res[res_idx] = -1;
+        //     }
+        // }
     }
 
     std::cout << "no ops possible" << std::endl;

@@ -3,7 +3,6 @@
 #include <vector>
 
 #include <limits>
-#include <random>
 
 #include "utils.hpp"
 
@@ -12,6 +11,12 @@ struct Objective
 	int threshold = 0;
 	int increment = 0;
 	int coeff = 0;
+};
+
+struct Res
+{
+	int id = -1;
+	int time = 0;
 };
 
 struct Operation
@@ -30,16 +35,13 @@ struct Operation
 	std::vector<int> prev;
 
 	int n_res = 0;
-	std::vector<int> res_idx;
-	std::vector<int> res_release_time;
-	mask_t res_mask = 0;
+	std::vector<Res> res;
+	// std::vector<int> res_vec;
 
 	Objective *obj = nullptr;
 };
 
-
-
-
+class Instance;
 
 struct Train
 {
@@ -47,20 +49,9 @@ struct Train
 	int begin_idx = -1;
 	int end_idx = -1;
 
-	std::vector<Operation>::iterator begin()
-	{
-		return this->inst->ops.begin() + this->begin_idx;
-	}
-
-	std::vector<Operation>::iterator end()
-	{
-		return this->inst->ops.begin() + this->end_idx;
-	}
-
-	Operation& operator[](int idx)
-	{
-		return *(this->begin() + idx);
-	}
+	std::vector<Operation>::iterator begin();
+	std::vector<Operation>::iterator end();
+	Operation& operator[](int idx);
 };
 
 class Instance
@@ -79,9 +70,6 @@ public:
 	int n_op = 0; 
 	int n_res = 0;
 	int n_train = 0;
-	
-	std::mt19937* rng;
-	void init_rng(uint seed);
 
 private:
 	void parse_json(const std::string& json_file);

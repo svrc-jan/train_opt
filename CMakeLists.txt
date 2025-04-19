@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.11-3.18)
 
-project(meta_opt)
+project(train_opt)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -26,5 +26,8 @@ target_link_libraries(instance PRIVATE utils)
 add_library(backtrack src/backtrack.cpp)
 target_link_libraries(backtrack PRIVATE instance utils)
 
+add_library(solution src/solution.cpp)
+target_link_libraries(solution PRIVATE instance utils)
+
 add_executable(instance_test apps/instance_test.cpp)
-target_link_libraries(instance_test PRIVATE backtrack instance)
+target_link_libraries(instance_test PRIVATE solution instance)

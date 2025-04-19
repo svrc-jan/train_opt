@@ -1,18 +1,29 @@
 #include "instance.hpp"
 
+std::vector<Operation>::iterator Train::begin()
+{
+	return this->inst->ops.begin() + this->begin_idx;
+}
+
+std::vector<Operation>::iterator Train::end()
+{
+	return this->inst->ops.begin() + this->end_idx;
+}
+
+Operation& Train::operator[](int idx)
+{
+	return this->inst->ops[this->begin_idx + idx];
+}
+
 Instance::Instance(const std::string& name, const std::string& json_file, int seed)
 	: name(name)
 {
 	this->parse_json(json_file);
-	this->init_rng(seed);
-
-	int n = 0;
-	int k = 0;
 }
 
 Instance::~Instance()
 {
-	delete this->rng;
+
 }
 
 void Instance::parse_json(const std::string& json_file)
@@ -54,6 +65,7 @@ void Instance::parse_json(const std::string& json_file)
 
 	this->trains.clear();
 	int op_idx = 0;
+	int train_id = 0;
 	
 	// add succesors and resources, index trains
 	for (auto train_json : td_json["trains"]) {
@@ -63,29 +75,35 @@ void Instance::parse_json(const std::string& json_file)
 		train.begin_idx = op_idx;
 		for (auto op_json : train_json) {
 			Operation& op = this->ops[op_idx];
+			op.train_id = train_id;
+			op.op_id = op_idx - train.begin_idx;
 
 			for (int succ_id : op_json["successors"]) {
 				op.succ.push_back(train.begin_idx + succ_id);
 				op.n_succ++;
+
+				Operation& succ = this->ops[train.begin_idx + succ_id];
+				succ.prev.push_back(op_idx);
+				succ.n_prev++;
 			}
 
 			// add resource to op
 			op.n_res = 0;
-			op.res_idx.clear();
-			op.res_release_time.clear();
+			op.res.clear();
+			// op.res_vec.resize(this->n_res);
+			// std::fill(op.res_vec.begin(), op.res_vec.end(), 0);
+
 			if (op_json.contains("resources")) {
 				for (auto res_json : op_json["resources"]) {
 					std::string res_name = res_json["resource"];
 
 					int res_idx = this->res_idx_map.at(res_name);
 					
-					op.res_idx.push_back(res_idx);
-					op.res_mask |= 1U << res_idx;
-
 					int release_time = 0;
 					if (res_json.contains("release_time"))
 						release_time = res_json["release_time"];
-					op.res_release_time.push_back(release_time);
+					op.res.push_back({res_idx, release_time});
+					// op.res_vec[res_idx] = 1;
 
 					op.n_res++;
 				}
@@ -95,6 +113,7 @@ void Instance::parse_json(const std::string& json_file)
 
 		train.end_idx = op_idx;
 		this->trains.push_back(train);
+		train_id++;
 	}
 
 	this->n_train = this->trains.size();
@@ -107,9 +126,6 @@ void Instance::parse_json(const std::string& json_file)
 
 		Objective obj;
 
-		int obj_train = objective_json["train"];
-		int obj_op = objective_json["operation"];
-
 		if (objective_json.contains("threshold")) {
 			obj.threshold = objective_json["threshold"];
 		}
@@ -121,20 +137,25 @@ void Instance::parse_json(const std::string& json_file)
 		if (objective_json.contains("coeff")) {
 			obj.coeff = objective_json["coeff"];
 		}
-		assert(obj_train < this->n_train);
 
 		this->objectives.push_back(obj);
 	}
+	
+	int obj_idx = 0; 
+	for (auto objective_json : td_json["objective"]) {
+		if (objective_json["type"] != "op_delay") {
+			continue;
+		}
 
-}
+		Objective obj;
 
-void Instance::init_rng(uint seed)
-{
-	if (seed == 0) {
-		std::random_device rd;
-		seed = rd();
-	}
-	this->rng = new std::mt19937(seed);
+		int obj_train = objective_json["train"];
+		int obj_op = objective_json["operation"];
+
+		this->trains[obj_train][obj_op].obj = &(this->objectives[obj_idx]);
+
+		obj_idx++;
+	}	
 }
 
 
