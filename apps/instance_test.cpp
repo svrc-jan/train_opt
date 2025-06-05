@@ -12,14 +12,7 @@ int main(int argc, char const *argv[])
     }
 
 	Instance inst("name", file_name);
-	
-	std::vector<std::vector<int>> paths;
-	for (int i = 0; i < inst.n_train; i++) {
-		auto path = make_random_path(inst, i);
-		paths.push_back(path);
-	}
 
-	make_order(inst, paths);
 
 	return 0;
 }
