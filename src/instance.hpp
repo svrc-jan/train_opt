@@ -1,10 +1,11 @@
 #pragma once
 
 #include <vector>
-
 #include <limits>
 
 #include "utils.hpp"
+
+using std::vector;
 
 struct Objective
 {
@@ -29,16 +30,19 @@ struct Operation
 	int start_ub = std::numeric_limits<int>::max();
 
 	int n_succ = 0;
-	std::vector<int> succ;
+	vector<int> succ;
 
 	int n_prev = 0;
-	std::vector<int> prev;
+	vector<int> prev;
 
 	int n_res = 0;
-	std::vector<Res> res;
-	// std::vector<int> res_vec;
+	vector<Res> res;
+	// vector<int> res_vec;
 
 	Objective *obj = nullptr;
+
+	inline bool operator==(const Operation& other);
+	inline bool operator!=(const Operation& other);
 };
 
 class Instance;
@@ -49,9 +53,9 @@ struct Train
 	int begin_idx = -1;
 	int end_idx = -1;
 
-	std::vector<Operation>::iterator begin();
-	std::vector<Operation>::iterator end();
-	Operation& operator[](int idx);
+	vector<Operation>::iterator begin();
+	vector<Operation>::iterator end();
+	inline Operation& operator[](int idx);
 };
 
 class Instance
@@ -62,9 +66,9 @@ public:
 	Instance(const std::string& name, const std::string& json_file, int seed=0);
 	~Instance();
 
-	std::vector<Operation> ops;
-	std::vector<Train> trains;
-	std::vector<Objective> objectives;
+	vector<Operation> ops;
+	vector<Train> trains;
+	vector<Objective> objectives;
 	std::unordered_map<std::string, uint> res_idx_map;
 
 	int n_op = 0; 

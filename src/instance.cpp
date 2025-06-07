@@ -1,11 +1,22 @@
 #include "instance.hpp"
 
-std::vector<Operation>::iterator Train::begin()
+bool Operation::operator==(const Operation& other)
+{
+	return (this->train_id == other.train_id) && 
+		(this->op_id == other.op_id);
+}
+
+bool Operation::operator!=(const Operation& other)
+{
+	return !this->operator==(other);
+}
+
+vector<Operation>::iterator Train::begin()
 {
 	return this->inst->ops.begin() + this->begin_idx;
 }
 
-std::vector<Operation>::iterator Train::end()
+vector<Operation>::iterator Train::end()
 {
 	return this->inst->ops.begin() + this->end_idx;
 }
@@ -15,7 +26,8 @@ Operation& Train::operator[](int idx)
 	return this->inst->ops[this->begin_idx + idx];
 }
 
-Instance::Instance(const std::string& name, const std::string& json_file, int seed)
+Instance::Instance(const std::string& name, 
+	const std::string& json_file, int seed)
 	: name(name)
 {
 	this->parse_json(json_file);
