@@ -13,14 +13,17 @@ int main(int argc, char const *argv[])
         file_name = string(argv[1]);
     }
 
-	Instance inst("name", file_name);
+	Instance inst(file_name);
 
 	Rand_int_gen rng;
 
 	Solution sol(inst, rng);
-	for (int i = 0; i < inst.n_train; i++) {
-		cout << sol.make_random_path(i) << endl;
-	}
+	sol.make_all_random_paths();
+	sol.make_earliest_start();
+	sol.make_latest_start();
+	sol.make_order();
+
+	cout << sol << endl;
 
 	return 0;
 }

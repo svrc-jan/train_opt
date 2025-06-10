@@ -21,7 +21,7 @@ void print_vec(std::ostream& os, const std::vector<T>& vec)
 template<typename T>
 std::ostream& operator<< (std::ostream& os, const std::vector<T>& vec)
 {
-    print_vec(os, vec);
+	print_vec(os, vec);
 	return os;
 }
 
@@ -45,10 +45,26 @@ void print_map(std::ostream& os, const std::map<Tk, Tv>& mp)
 	os << "}";
 }
 
+
 template<typename Tk, typename Tv>
 std::ostream& operator<< (std::ostream& os, const std::map<Tk, Tv>& mp)
 {
-    print_map(os, mp);
+	print_map(os, mp);
+	return os;
+}
+
+
+template<typename Ta, typename Tb>
+void print_pair(std::ostream& os, const std::pair<Ta, Tb>& pr)
+{
+	os << "(" << pr.first << ", " << pr.second << ")";
+}
+
+
+template<typename Ta, typename Tb>
+std::ostream& operator<< (std::ostream& os, const std::pair<Ta, Tb>& pr)
+{
+	print_pair(os, pr);
 	return os;
 }
 
@@ -105,3 +121,4 @@ std::vector<T>& operator-=(std::vector<T>& a, const std::vector<T>& b)
 
 	return a;
 }
+

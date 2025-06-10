@@ -5,7 +5,9 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <utility>
 #include <random>
+
 
 // #include <boost/multiprecision/cpp_int.hpp>
 
@@ -39,6 +41,11 @@ template<typename Tk, typename Tv>
 std::ostream& operator<< (std::ostream& os, const std::map<Tk, Tv>& mp);
 
 
+template<typename Ta, typename Tb>
+void print_pair(std::ostream& os, const std::pair<Ta, Tb>& pr);
+
+template<typename Ta, typename Tb>
+std::ostream& operator<< (std::ostream& os, const std::pair<Ta, Tb>& pr);
 
 template<typename T>
 std::vector<T> operator+(std::vector<T> a, std::vector<T> b);

@@ -7,11 +7,11 @@ int main(int argc, char const *argv[])
 {
 	std::string file_name = "data/testing/headway1.json";
 
-    if (argc > 1) {
-        file_name = std::string(argv[1]);
-    }
+	if (argc > 1) {
+		file_name = std::string(argv[1]);
+	}
 
-	Instance inst("name", file_name);
+	Instance inst(file_name);
 
 
 	return 0;

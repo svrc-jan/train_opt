@@ -26,9 +26,8 @@ Operation& Train::operator[](int idx)
 	return this->inst->ops[this->begin_idx + idx];
 }
 
-Instance::Instance(const std::string& name, 
-	const std::string& json_file, int seed)
-	: name(name)
+Instance::Instance(const std::string& json_file)
+	: name(json_file)
 {
 	this->parse_json(json_file);
 }
@@ -64,7 +63,8 @@ void Instance::parse_json(const std::string& json_file)
 			if (op_json.contains("resources")) {
 				for (auto res_json : op_json["resources"]) {
 					std::string res_name = res_json["resource"];
-					if (this->res_idx_map.find(res_name) == this->res_idx_map.end()) {
+
+					if (this->res_idx_map.count(res_name) == 0) {
 						this->res_idx_map[res_name] = this->n_res++;
 					}
 				}

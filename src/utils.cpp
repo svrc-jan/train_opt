@@ -1,12 +1,12 @@
 #include "utils.hpp"
 
 bool file_exists(const std::string& name) {
-    if (FILE *file = fopen(name.c_str(), "r")) {
-        fclose(file);
-        return true;
-    } else {
-        return false;
-    }   
+	if (FILE *file = fopen(name.c_str(), "r")) {
+		fclose(file);
+		return true;
+	} else {
+		return false;
+	}   
 }
 
 
@@ -31,17 +31,17 @@ json get_json_file(const std::string& file_name)
 
 	if (file_exists(file_name)) {
 		// std::cerr << "json file '" << file_name << "' found" << std::endl;
-        file.open(file_name);
-    }
+		file.open(file_name);
+	}
 	
 	else if (file_exists(file_name_parent)) {
 		// std::cerr << "json file '" << file_name_parent << "' found" << std::endl;
 		file.open(file_name_parent);
 	}
-	
+		
 	else {
 		std::cerr << "json file '" << file_name << "' not found" << std::endl;
-        exit(1);
+		exit(1);
 	}
 
 	json config = json::parse(file);
@@ -52,13 +52,13 @@ json get_json_file(const std::string& file_name)
 
 Rand_int_gen::Rand_int_gen(const uint seed)
 {
-    this->init_rng(seed);
-    this->dist = unif_int_dist(0);
+	this->init_rng(seed);
+	this->dist = unif_int_dist(0);
 }
 
 Rand_int_gen::~Rand_int_gen()
 {
-    delete this->rng;
+	delete this->rng;
 }
 
 
@@ -74,19 +74,19 @@ void Rand_int_gen::init_rng(uint seed)
 
 int Rand_int_gen::operator()(const int range)
 {
-    if (range < 2) {
-        return 0;
-    }
+	if (range < 2) {
+		return 0;
+	}
 
-    return this->dist(*this->rng) % range;
+	return this->dist(*this->rng) % range;
 }
 
 int Rand_int_gen::operator()(const int start, const int end)
 {
-    if (end < start + 2) {
-        return start;
-    }
-    
-    return start + this->dist(*this->rng) % (end - start);
+	if (end < start + 2) {
+		return start;
+	}
+	
+	return start + this->dist(*this->rng) % (end - start);
 }
 

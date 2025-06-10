@@ -27,7 +27,7 @@ struct Operation
 
 	int dur = 0;
 	int start_lb = 0;
-	int start_ub = std::numeric_limits<int>::max();
+	int start_ub = std::numeric_limits<typeof(start_ub)>::max()/4;
 
 	int n_succ = 0;
 	vector<int> succ;
@@ -63,7 +63,8 @@ class Instance
 public:
 	std::string name = "";
 
-	Instance(const std::string& name, const std::string& json_file, int seed=0);
+	Instance(const std::string& json_file);
+
 	~Instance();
 
 	vector<Operation> ops;
