@@ -20,8 +20,10 @@ include_directories(
 
 add_library(utils src/utils.cpp)
 
+add_library(binary_vector src/binary_vector.cpp)
+
 add_library(instance src/instance.cpp)
-target_link_libraries(instance PRIVATE utils)
+target_link_libraries(instance PRIVATE binary_vector utils)
 
 add_library(solution src/solution.cpp)
 target_link_libraries(solution PRIVATE instance utils)

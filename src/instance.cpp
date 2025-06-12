@@ -1,15 +1,5 @@
 #include "instance.hpp"
 
-bool Operation::operator==(const Operation& other)
-{
-	return (this->train_id == other.train_id) && 
-		(this->op_id == other.op_id);
-}
-
-bool Operation::operator!=(const Operation& other)
-{
-	return !this->operator==(other);
-}
 
 vector<Operation>::iterator Train::begin()
 {
@@ -171,3 +161,15 @@ void Instance::parse_json(const std::string& json_file)
 }
 
 
+void Instance::make_res_bin_vec()
+{
+	for (auto& op : this->ops) {
+		vector<int> idx;
+		idx.reserve(op.res.size());
+		for (const auto& res : op.res) {
+			idx.push_back(res.id);
+		}
+
+		op.res_vec = std::move(Binary_vector(this->n_res, idx));
+	}
+}

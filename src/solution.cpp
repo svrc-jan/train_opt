@@ -147,8 +147,6 @@ op_order_t& Solution::make_order()
 
 
 
-
-
 void Solution::print_order(std::ostream& os) const
 {
 	vector<std::string> vs;
@@ -177,6 +175,7 @@ void Solution::print_order(std::ostream& os) const
 
 	os << vs;
 }
+
 
 std::ostream& operator<< (std::ostream& os, const Solution& sol)
 {
