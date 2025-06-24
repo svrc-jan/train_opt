@@ -14,6 +14,7 @@ namespace bin_vec {
 	int get_n_blocks();
 
 	void clear(block_t* t);
+	void copy(block_t* t, const block_t* a);
 	void fill(block_t* t, const std::vector<int>& bit_idx);
 
 	void not_(block_t* t, const block_t* a);

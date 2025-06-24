@@ -1,5 +1,9 @@
 #include "solution.hpp"
 
+#define first_op(order, idx) this->inst.ops[order[idx].first]
+#define second_op(order, idx) this->inst.ops[order[idx].second]
+
+
 Solution::Solution(const Instance& inst, Rand_int_gen& rng)
 	: inst(inst), rng(rng)
 {
@@ -12,23 +16,24 @@ op_order_t& Solution::make_random_path(size_t train)
 	op_order_t& path = this->paths[train];
 	path.clear();
 
-	path.push_back({-1, inst.trains[train].begin_idx});
-
 	while (true) {
-		int op_idx = path.back().second;
-		const Operation* op = &inst.ops[op_idx];
+		int op_idx = path.empty() ? 
+			inst.trains[train].begin_idx : 
+			path.back().second;
 
-		if (op->n_succ == 0) {
+		const Operation& op = inst.ops[op_idx];
+
+		if (op.n_succ == 0) {
 			// path.push_back({op_idx, -1});
 			break;
 		}
 		
-		else if (op->n_succ == 1) {
-			path.push_back({op_idx, op->succ[0]});
+		else if (op.n_succ == 1) {
+			path.push_back({op_idx, op.succ[0]});
 		}
 
 		else {
-			path.push_back({op_idx, op->succ[rng(op->n_succ)]});
+			path.push_back({op_idx, op.succ[rng(op.n_succ)]});
 		}
 	}
 
@@ -52,21 +57,13 @@ std::map<int, int>& Solution::make_earliest_start()
 	for (int train = 0; train < inst.n_train; train++) {
 		const op_order_t& path = this->paths[train];
 
-		for (const auto& [prev, op] : path) {
-			if (op == -1) {
-				break;
-			}
-			
-			else if (prev == -1) {
-				this->earliest_start[op] = inst.ops[op].start_lb;
-			}
+		int start_op = inst.trains[train].begin_idx;
+		this->earliest_start[start_op] = inst.ops[start_op].start_lb;
 
-			else {
-				this->earliest_start[op] = std::max(
-					inst.ops[op].start_lb,
-					this->earliest_start[prev] + inst.ops[prev].dur
-				);
-			}
+		for (const auto& [prev, op] : path) {
+			this->earliest_start[op] = std::max(
+				inst.ops[op].start_lb,
+				this->earliest_start[prev] + inst.ops[prev].dur);
 		}
 
 	}
@@ -96,7 +93,7 @@ std::map<int, int>& Solution::make_latest_start()
 
 			this->latest_start[op] = inst.ops[op].obj->threshold;
 
-			for (size_t j = i; path[j].first >= 0; j--) {
+			for (int j = i; j >= 0; j--) {
 				int start_push = 
 					this->latest_start[path[j].second] -
 					inst.ops[path[j].first].dur;
@@ -151,21 +148,17 @@ int Solution::count_collisions(const op_order_t& ord) const
 	namespace bv = bin_vec;
 
 	int collision_count = 0;
-	bv::block_t r1[bv::get_n_blocks()] = {0};
+
+	bv::block_t r1[bv::get_n_blocks()];
+	bv::copy(r1, inst.start_res_vec);
 
 	for (size_t i = 0; i < ord.size(); i++) {
-		if (ord[i].first == -1) {
-			bv::or_(r1, r1, inst.ops[ord[i].second].res_vec);
-			continue;
-		}
-
 		bv::and_not(r1, r1, inst.ops[ord[i].first].res_vec);
 
 		collision_count += bv::count_overlap(r1, 
 			inst.ops[ord[i].second].res_vec);
 
 		bv::or_(r1, r1, inst.ops[ord[i].second].res_vec);
-
 	}
 
 	return collision_count;

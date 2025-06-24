@@ -15,10 +15,7 @@ int main(int argc, char const *argv[])
 
 	Instance inst(file_name);
 
-	for (auto& op : inst.ops) {
-		cout << bin_vec::to_vector(op.res_vec) << endl;
-	}
-
+	cout << bin_vec::to_vector(inst.start_res_vec) << endl;
 
 	return 0;
 }

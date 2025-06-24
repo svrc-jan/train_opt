@@ -20,6 +20,13 @@ namespace bin_vec
 		}
 	}
 
+	void copy(block_t* t, const block_t* a)
+	{
+		for (int i = 0; i < n_blocks; i++) {
+			t[i] = a[i];
+		}
+	}
+
 	void fill(block_t* t, const std::vector<int>& bit_idx)
 	{
 		for (const auto& i : bit_idx) {
