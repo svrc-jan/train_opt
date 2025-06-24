@@ -22,6 +22,7 @@ private:
 	std::map<int, int> earliest_start;
 	std::map<int, int> latest_start;
 
+
 public:
 	Solution(const Instance& inst, Rand_int_gen& rng);
 
@@ -31,8 +32,11 @@ public:
 	std::map<int, int>& make_latest_start();
 	op_order_t& make_order();
 
+	int count_collisions(const op_order_t& ord) const;
+	bool forward_reorder();
+
 	void print_order(std::ostream& os) const;
 };
 
 
-std::ostream& operator<< (std::ostream& os, const Solution& sol);
+std::ostream& operator<<(std::ostream& os, const Solution& sol);

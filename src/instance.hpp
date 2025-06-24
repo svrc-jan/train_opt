@@ -5,6 +5,7 @@
 
 #include "utils.hpp"
 #include "operation.hpp"
+#include "bin_vec.hpp"
 
 using std::vector;
 
@@ -34,6 +35,7 @@ public:
 	vector<Train> trains;
 	vector<Objective> objectives;
 	std::unordered_map<std::string, uint> res_idx_map;
+	vector<bin_vec::block_t> res_bin_vec;
 
 	int n_op = 0; 
 	int n_res = 0;

@@ -3,7 +3,7 @@
 #include <vector>
 #include <limits>
 
-#include "binary_vector.hpp"
+#include "bin_vec.hpp"
 
 using std::vector;
 
@@ -30,14 +30,14 @@ struct Operation
 	int start_ub = std::numeric_limits<typeof(start_ub)>::max()/4;
 
 	int n_succ = 0;
-	vector<int> succ;
+	vector<int> succ = {};
 
 	int n_prev = 0;
-	vector<int> prev;
+	vector<int> prev = {};
 
 	int n_res = 0;
-	vector<Res> res;
-	Binary_vector res_vec;
+	vector<Res> res = {};
+	bin_vec::block_t* res_vec = nullptr;
 
 	Objective *obj = nullptr;
 

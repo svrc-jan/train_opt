@@ -23,7 +23,7 @@ int main(int argc, char const *argv[])
 	sol.make_latest_start();
 	sol.make_order();
 
-	cout << sol << endl;
+	cout << sol.forward_reorder() << endl;
 
 	return 0;
 }

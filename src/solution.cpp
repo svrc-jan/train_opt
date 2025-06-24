@@ -146,6 +146,54 @@ op_order_t& Solution::make_order()
 }
 
 
+int Solution::count_collisions(const op_order_t& ord) const
+{
+	namespace bv = bin_vec;
+
+	int collision_count = 0;
+	bv::block_t r1[bv::get_n_blocks()] = {0};
+
+	for (size_t i = 0; i < ord.size(); i++) {
+		if (ord[i].first == -1) {
+			bv::or_(r1, r1, inst.ops[ord[i].second].res_vec);
+			continue;
+		}
+
+		bv::and_not(r1, r1, inst.ops[ord[i].first].res_vec);
+
+		collision_count += bv::count_overlap(r1, 
+			inst.ops[ord[i].second].res_vec);
+
+		bv::or_(r1, r1, inst.ops[ord[i].second].res_vec);
+
+	}
+
+	return collision_count;
+}
+
+
+bool Solution::forward_reorder()
+{
+	namespace bv = bin_vec;
+
+	int current_count = this->count_collisions(this->order);
+
+	op_order_t ord = this->order;
+	
+	size_t i = 0;
+	while (i < ord.size()) {
+		
+	}
+	
+
+	int new_count = this->count_collisions(ord);
+
+	std::cout << current_count << "->" << new_count << std::endl;
+
+	return new_count < current_count;
+
+}
+
 
 void Solution::print_order(std::ostream& os) const
 {

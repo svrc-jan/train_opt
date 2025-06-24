@@ -14,22 +14,11 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/build)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/build)
 
 include_directories(
-	${PROJECT_SOURCE_DIR}/apps
-	${PROJECT_SOURCE_DIR}/src 
-	${PROJECT_SOURCE_DIR}/lib)
+	${PROJECT_SOURCE_DIR}/lib 
+	${PROJECT_SOURCE_DIR}/src)
 
-add_library(utils src/utils.cpp)
+file(GLOB SOURCES "src/*.cpp")
 
-add_library(binary_vector src/binary_vector.cpp)
+add_executable(instance_test apps/instance_test.cpp ${SOURCES})
 
-add_library(instance src/instance.cpp)
-target_link_libraries(instance PRIVATE binary_vector utils)
-
-add_library(solution src/solution.cpp)
-target_link_libraries(solution PRIVATE instance utils)
-
-add_executable(instance_test apps/instance_test.cpp)
-target_link_libraries(instance_test PRIVATE instance)
-
-add_executable(solution_test apps/solution_test.cpp)
-target_link_libraries(solution_test PRIVATE solution instance)
+add_executable(solution_test apps/solution_test.cpp ${SOURCES})

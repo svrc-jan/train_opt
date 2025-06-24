@@ -1,6 +1,7 @@
-#include "instance.hpp"
-
 #include <filesystem>
+
+#include "instance.hpp"
+#include "bin_vec.hpp"
 
 using namespace std;
 
@@ -13,7 +14,11 @@ int main(int argc, char const *argv[])
 	}
 
 	Instance inst(file_name);
-	cout << inst.n_res << endl;
+
+	for (auto& op : inst.ops) {
+		cout << bin_vec::to_vector(op.res_vec) << endl;
+	}
+
 
 	return 0;
 }

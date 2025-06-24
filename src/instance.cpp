@@ -20,6 +20,7 @@ Instance::Instance(const std::string& json_file)
 	: name(json_file)
 {
 	this->parse_json(json_file);
+	this->make_res_bin_vec();
 }
 
 Instance::~Instance()
@@ -163,13 +164,21 @@ void Instance::parse_json(const std::string& json_file)
 
 void Instance::make_res_bin_vec()
 {
-	for (auto& op : this->ops) {
-		vector<int> idx;
-		idx.reserve(op.res.size());
-		for (const auto& res : op.res) {
-			idx.push_back(res.id);
+	bin_vec::set_req_n_blocks(this->n_res);
+	this->res_bin_vec = vector<bin_vec::block_t>(
+		bin_vec::get_n_blocks()*this->n_op, 0);
+	this->res_bin_vec.clear();
+
+	for (int i = 0; i < this->n_op; i++) {
+		vector<int> bit_idx = {};
+		bit_idx.reserve(this->ops[i].n_res);
+
+		for (const auto& res : this->ops[i].res) {
+			bit_idx.push_back(res.id);
 		}
 
-		op.res_vec = std::move(Binary_vector(this->n_res, idx));
+		this->ops[i].res_vec = &(this->res_bin_vec[i*bin_vec::get_n_blocks()]);
+
+		bin_vec::fill(this->ops[i].res_vec, bit_idx);
 	}
 }
