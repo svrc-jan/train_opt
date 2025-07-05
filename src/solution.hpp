@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <list>
 #include <utility>
 #include <map>
 
@@ -8,31 +9,38 @@
 
 using std::vector;
 using std::pair;
-using op_order_t = vector<pair<int, int>>;
+using std::list;
+
 
 class Solution
 {
 private:
 	const Instance& inst;
 	Rand_int_gen& rng;
-
-	op_order_t order;
+	
 	vector<vector<pair<int, int>>> paths;
+	vector<bool> path_inserted;
 
 	std::map<int, int> earliest_start;
 	std::map<int, int> latest_start;
 
 
 public:
+	list<pair<int, int>> order;
+
 	Solution(const Instance& inst, Rand_int_gen& rng);
 
-	op_order_t& make_random_path(size_t train);
-	vector<op_order_t>& make_all_random_paths();
-	std::map<int, int>& make_earliest_start();
-	std::map<int, int>& make_latest_start();
-	op_order_t& make_order();
+	const vector<pair<int, int>>& make_random_path(size_t train);
+	const vector<vector<pair<int, int>>>& make_all_random_paths();
+	const std::map<int, int>& make_earliest_start();
+	const std::map<int, int>& make_latest_start();
+	const list<pair<int, int>>& make_order();
 
-	int count_collisions(const op_order_t& ord) const;
+	int count_collisions(const list<pair<int, int>>& ord) const;
+	int get_res_overlap_diff(
+		const pair<int, int>& a,
+		const pair<int, int>& b) const;
+
 	bool forward_reorder();
 
 	void print_order(std::ostream& os) const;
@@ -40,3 +48,6 @@ public:
 
 
 std::ostream& operator<<(std::ostream& os, const Solution& sol);
+
+vector<int>& operator-=(vector<int>& vec, const Operation& op);
+vector<int>& operator+=(vector<int>& vec, const Operation& op);

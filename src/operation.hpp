@@ -3,8 +3,6 @@
 #include <vector>
 #include <limits>
 
-#include "bin_vec.hpp"
-
 using std::vector;
 
 struct Objective
@@ -37,7 +35,6 @@ struct Operation
 
 	int n_res = 0;
 	vector<Res> res = {};
-	bin_vec::block_t* res_vec = nullptr;
 
 	Objective *obj = nullptr;
 

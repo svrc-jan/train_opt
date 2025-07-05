@@ -5,7 +5,6 @@
 
 #include "utils.hpp"
 #include "operation.hpp"
-#include "bin_vec.hpp"
 
 using std::vector;
 
@@ -18,7 +17,13 @@ struct Train
 	int end_idx = -1;
 
 	Operation& get_op(const int idx);
-	Operation& operator[](const int idx) { return this->get_op(idx); }
+	const Operation& get_op(const int idx) const;
+	
+	Operation& operator[](const int idx)
+	{ return this->get_op(idx); }
+
+	const Operation& operator[](const int idx) const 
+	{ return this->get_op(idx); }
 	
 };
 
@@ -35,8 +40,8 @@ public:
 	vector<Train> trains;
 	vector<Objective> objectives;
 	std::unordered_map<std::string, uint> res_idx_map;
-	vector<bin_vec::block_t> res_bin_vec;
-	bin_vec::block_t* start_res_vec;
+	// vector<bin_vec::block_t> res_bin_vec;
+	// bin_vec::block_t* start_res_vec;
 
 	int n_op = 0; 
 	int n_res = 0;
@@ -46,7 +51,7 @@ public:
 
 private:
 	void parse_json(const std::string& json_file);
-	void make_res_bin_vec();
+	// void make_res_bin_vec();
 
 	mutable std::map<std::pair<int, int>, int> res_overlap_cache;
 };

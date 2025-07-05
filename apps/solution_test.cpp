@@ -19,10 +19,10 @@ int main(int argc, char const *argv[])
 
 	Solution sol(inst, rng);
 	sol.make_all_random_paths();
-	cout << sol.make_earliest_start() << endl;
-	cout << sol.make_latest_start() << endl;
-	cout << sol.make_order() << endl;
-
+	sol.make_earliest_start();
+	sol.make_latest_start();
+	cout << sol.make_prio() << endl;
+	
 
 	return 0;
 }
