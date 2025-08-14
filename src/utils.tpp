@@ -1,5 +1,32 @@
 #pragma once
 
+
+template<typename T>
+bool is_ascending(T& iterable)
+{
+	auto begin = iterable.begin();
+	auto end = iterable.end();
+
+	if (begin == end) {
+		return true;
+	}
+
+	auto last = *(begin++);
+
+	for (; begin != end; begin++) {
+		auto curr = *(begin);
+
+		if (curr < last) {
+			return false;
+		}
+
+		last = curr;
+	}
+
+	return true;
+}
+
+
 template<typename T>
 void print_vec(std::ostream& os, const std::vector<T>& vec)
 {
@@ -121,4 +148,5 @@ std::vector<T>& operator-=(std::vector<T>& a, const std::vector<T>& b)
 
 	return a;
 }
+
 

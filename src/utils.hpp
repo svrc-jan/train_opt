@@ -28,6 +28,9 @@ bool file_exists(const std::string& name);
 json get_json_file(const std::string& file_name);
 
 template<typename T>
+bool is_ascending(const T& iterable);
+
+template<typename T>
 void print_vec(std::ostream& os, const std::vector<T>& vec);
 
 template<typename T>
