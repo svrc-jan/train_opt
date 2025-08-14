@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <list>
 #include <map>
 #include <utility>
 #include <random>
@@ -37,6 +38,12 @@ template<typename T>
 std::ostream& operator<< (std::ostream& os, const std::vector<T> & vec);
 
 
+template<typename T>
+void print_list(std::ostream& os, const std::list<T>& lst);
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const std::list<T> & lst);
+
 template<typename Tk, typename Tv>
 void print_map(std::ostream& os, const std::map<Tk, Tv>& mp);
 
@@ -49,6 +56,8 @@ void print_pair(std::ostream& os, const std::pair<Ta, Tb>& pr);
 
 template<typename Ta, typename Tb>
 std::ostream& operator<< (std::ostream& os, const std::pair<Ta, Tb>& pr);
+
+
 
 template<typename T>
 std::vector<T> operator+(std::vector<T> a, std::vector<T> b);

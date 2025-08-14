@@ -6,11 +6,16 @@ Operation& Train::get_op(const int idx)
 	return this->inst->ops[this->begin_idx + idx];
 }
 
+const Operation& Train::get_op(const int idx) const
+{
+	return this->inst->ops[this->begin_idx + idx];
+}
+
 Instance::Instance(const std::string& json_file)
 	: name(json_file)
 {
 	this->parse_json(json_file);
-	this->make_res_bin_vec();
+	// this->make_res_bin_vec();
 	this->res_overlap_cache.clear();
 }
 
@@ -153,36 +158,36 @@ void Instance::parse_json(const std::string& json_file)
 }
 
 
-void Instance::make_res_bin_vec()
-{
-	bin_vec::set_req_n_blocks(this->n_res);
-	this->res_bin_vec = vector<bin_vec::block_t>(
-		bin_vec::get_n_blocks()*(this->n_op + 1), 0);
+// void Instance::make_res_bin_vec()
+// {
+// 	bin_vec::set_req_n_blocks(this->n_res);
+// 	this->res_bin_vec = vector<bin_vec::block_t>(
+// 		bin_vec::get_n_blocks()*(this->n_op + 1), 0);
 	
-	for (int i = 0; i < this->n_op; i++) {
-		this->ops[i].res_vec = &(this->res_bin_vec[i*bin_vec::get_n_blocks()]);
-		bin_vec::clear(this->ops[i].res_vec);
+// 	for (int i = 0; i < this->n_op; i++) {
+// 		this->ops[i].res_vec = &(this->res_bin_vec[i*bin_vec::get_n_blocks()]);
+// 		bin_vec::clear(this->ops[i].res_vec);
 
-		vector<int> bit_idx = {};
-		bit_idx.reserve(this->ops[i].n_res);
+// 		vector<int> bit_idx = {};
+// 		bit_idx.reserve(this->ops[i].n_res);
 
-		for (const auto& res : this->ops[i].res) {
-			bit_idx.push_back(res.id);
-		}
+// 		for (const auto& res : this->ops[i].res) {
+// 			bit_idx.push_back(res.id);
+// 		}
 
-		bin_vec::fill(this->ops[i].res_vec, bit_idx);
-	}
+// 		bin_vec::fill(this->ops[i].res_vec, bit_idx);
+// 	}
 
-	this->start_res_vec = &(this->res_bin_vec[this->n_op*bin_vec::get_n_blocks()]);
-	bin_vec::clear(this->start_res_vec);
+// 	this->start_res_vec = &(this->res_bin_vec[this->n_op*bin_vec::get_n_blocks()]);
+// 	bin_vec::clear(this->start_res_vec);
 
-	for (auto& tr : this->trains) {
-		bin_vec::or_(
-			this->start_res_vec,
-			this->start_res_vec,
-			tr[0].res_vec);
-	}
-}
+// 	for (auto& tr : this->trains) {
+// 		bin_vec::or_(
+// 			this->start_res_vec,
+// 			this->start_res_vec,
+// 			tr[0].res_vec);
+// 	}
+// }
 
 
 int Instance::get_res_overlap(const int a, const int b) const
@@ -196,12 +201,31 @@ int Instance::get_res_overlap(const int a, const int b) const
 		return it->second;
 	}
 
-	int rv = bin_vec::count_overlap(
-		this->ops[a].res_vec,
-		this->ops[b].res_vec
-	);
+	int overlap_count = 0;
+	
+	int i = 0, j = 0;
+	while (i < this->ops[a].n_res && j < this->ops[b].n_res) {
+		int ri = this->ops[a].res[i].id;
+		int rj = this->ops[b].res[j].id;
+		
+		if (ri == rj) {
+			overlap_count++;
 
-	this->res_overlap_cache[idx] = rv;
+			i++;
+			j++;
+		}
 
-	return rv;
+		else if (ri < rj)	{
+			i++;
+		}
+
+		else {
+			j++;
+		}
+		
+	}
+
+	this->res_overlap_cache[idx] = overlap_count;
+
+	return overlap_count;
 }

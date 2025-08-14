@@ -52,6 +52,32 @@ std::ostream& operator<< (std::ostream& os, const std::vector<T>& vec)
 	return os;
 }
 
+template<typename T>
+void print_list(std::ostream& os, const std::list<T>& lst)
+{
+	os << "[";
+	int i = 0;
+	for (auto it = lst.begin(); it != lst.end(); it++) {
+		os << *it << (i < (int)lst.size() - 1 ? ", " : "");
+
+#if defined VEC_TRUNCATE_SIZE && VEC_TRUNCATE_SIZE > 0 
+		if (i >= VEC_TRUNCATE_SIZE) {
+			os << "...";
+			break;
+		}
+#endif
+		i++;
+	}
+	os << "]";
+}
+
+template<typename T>
+std::ostream& operator<< (std::ostream& os, const std::list<T>& lst)
+{
+	print_list(os, lst);
+	return os;
+}
+
 
 template<typename Tk, typename Tv>
 void print_map(std::ostream& os, const std::map<Tk, Tv>& mp)
