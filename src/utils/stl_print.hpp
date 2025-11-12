@@ -1,8 +1,11 @@
 #pragma once
 
-#include "utils.hpp"
-
-
+#include <fstream>
+#include <vector>
+#include <list>
+#include <map>
+#include <unordered_map>
+#include <utility>
 
 template<typename T>
 void print_vec(std::ostream& os, const std::vector<T>& vec)
@@ -22,12 +25,14 @@ void print_vec(std::ostream& os, const std::vector<T>& vec)
 	os << "]";
 }
 
+
 template<typename T>
 std::ostream& operator<< (std::ostream& os, const std::vector<T>& vec)
 {
 	print_vec(os, vec);
 	return os;
 }
+
 
 template<typename T>
 void print_list(std::ostream& os, const std::list<T>& lst)
@@ -84,6 +89,34 @@ std::ostream& operator<< (std::ostream& os, const std::map<Tk, Tv>& mp)
 }
 
 
+template<typename Tk, typename Tv>
+void print_umap(std::ostream& os, const std::unordered_map<Tk, Tv>& mp)
+{
+	os << "{";
+	size_t i = 0;
+	for (auto it = mp.begin(); it != mp.end(); it++) {
+		os << it->first << ":" << it->second << (i < mp.size() - 1 ? ", " : "");
+
+#if defined VEC_TRUNCATE_SIZE && VEC_TRUNCATE_SIZE > 0 
+		if (i >= VEC_TRUNCATE_SIZE) {
+			os << "...";
+			break;
+		}
+#endif
+		i++;
+	}
+	os << "}";
+}
+
+
+template<typename Tk, typename Tv>
+std::ostream& operator<< (std::ostream& os, const std::unordered_map<Tk, Tv>& mp)
+{
+	print_umap(os, mp);
+	return os;
+}
+
+
 template<typename Ta, typename Tb>
 void print_pair(std::ostream& os, const std::pair<Ta, Tb>& pr)
 {
@@ -97,59 +130,3 @@ std::ostream& operator<< (std::ostream& os, const std::pair<Ta, Tb>& pr)
 	print_pair(os, pr);
 	return os;
 }
-
-
-template<typename T>
-std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
-{
-	assert(a.size() == b.size());
-	std::vector<T> res = a;
-
-	for (size_t i = 0; i < a.size(); i++) {
-		res[i] += b[i];
-	}
-
-	return res;
-}
-
-
-template<typename T>
-std::vector<T> operator-(const std::vector<T>& a, const std::vector<T>& b)
-{
-	assert(a.size() == b.size());
-	std::vector<T> res = a;
-
-	for (size_t i = 0; i < a.size(); i++) {
-		res[i] -= b[i];
-	}
-
-	return res;
-}
-
-
-template<typename T>
-std::vector<T>& operator+=(std::vector<T>& a, const std::vector<T>& b)
-{
-	assert(a.size() == b.size());
-
-	for (size_t i = 0; i < a.size(); i++) {
-		a[i] += b[i];
-	}
-
-	return a;
-}
-
-
-template<typename T>
-std::vector<T>& operator-=(std::vector<T>& a, const std::vector<T>& b)
-{
-	assert(a.size() == b.size());
-
-	for (size_t i = 0; i < a.size(); i++) {
-		a[i] -= b[i];
-	}
-
-	return a;
-}
-
-

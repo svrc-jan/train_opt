@@ -17,7 +17,7 @@ include_directories(
 	${PROJECT_SOURCE_DIR}/lib 
 	${PROJECT_SOURCE_DIR}/src)
 
-file(GLOB SOURCES "src/*.cpp")
+file(GLOB SOURCES "src/*.cpp" "src/utils/*.cpp")
 
 add_executable(base_data_test apps/base_data_test.cpp ${SOURCES})
 # add_executable(solution_test apps/solution_test.cpp ${SOURCES})

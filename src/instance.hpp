@@ -6,12 +6,13 @@
 #include <limits>
 #include <string>
 
-#include "utils.hpp"
+#include "utils/array.hpp"
+#include "utils/files.hpp"
+
 
 using namespace std;
 
 #define MAX_INT numeric_limits<int>::max()
-
 
 
 struct Res
