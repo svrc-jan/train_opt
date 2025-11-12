@@ -1,17 +1,7 @@
-for file in data/testing/*
-do
-    echo $file
-    build/instance_test "$file"
-done
+app="build/base_data_test"
 
-for file in data/phase1/*
+for file in data/*.json
 do
     echo $file
-    build/instance_test "$file"
-done
-
-for file in data/phase2/*
-do
-    echo $file
-    build/instance_test "$file"
+    $app "$file"
 done

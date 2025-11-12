@@ -5,6 +5,25 @@
 #define INIT_COMP_ARRAY_CAP 64UL
 
 template<typename T>
+bool Array_block<T>::operator==(const Array_block<T>& other) const
+{
+	T* a = this->begin_ptr;
+	T* b = other.begin_ptr;
+	for (; a != this->end_ptr && b != other.end_ptr; a++, b++) {
+		if (*a != *b) {
+			return false;
+		}
+	}
+
+	if (a == this->end_ptr && b == other.end_ptr) {
+		return true;
+	}
+
+	return false;
+}
+
+
+template<typename T>
 T* Array_entry<T>::begin()
 {
 	return (this->ptr != nullptr) ?

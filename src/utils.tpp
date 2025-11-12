@@ -1,30 +1,7 @@
 #pragma once
 
+#include "utils.hpp"
 
-template<typename T>
-bool is_ascending(T& iterable)
-{
-	auto begin = iterable.begin();
-	auto end = iterable.end();
-
-	if (begin == end) {
-		return true;
-	}
-
-	auto last = *(begin++);
-
-	for (; begin != end; begin++) {
-		auto curr = *(begin);
-
-		if (curr < last) {
-			return false;
-		}
-
-		last = curr;
-	}
-
-	return true;
-}
 
 
 template<typename T>

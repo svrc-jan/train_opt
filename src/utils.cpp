@@ -90,3 +90,11 @@ int Rand_int_gen::operator()(const int start, const int end)
 	return start + this->dist(*this->rng) % (end - start);
 }
 
+int Rand_int_gen::operator()(const std::vector<int>& vec)
+{
+	if (vec.size() < 2) {
+		return vec[0];
+	}
+	
+	return vec[this->dist(*this->rng) % vec.size()];
+}

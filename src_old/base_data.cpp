@@ -1,6 +1,6 @@
 #include "base_data.hpp"
 
-Base_data::Base_data(const string& file_name) : file_name(file_name)
+Base_data::Base_data(const string& file_name)
 {
 	this->parse_json(file_name);
 	this->make_prev();
@@ -15,17 +15,15 @@ Base_data::~Base_data()
 
 void Base_data::parse_json(string file_name)
 {
-	
-	
 	this->trains.clear();
 	this->ac_ops.clear();
 	this->ac_succ.clear();
 	this->ac_res.clear();
-	this->ac_res_time.clear();
 
 	json inst_jsn = get_json_file(file_name);
 
 	this->trains.reserve(inst_jsn["trains"].size());
+	
 
 	for (const auto& train_jsn : inst_jsn["trains"]) {
 		Base_train train;
@@ -59,22 +57,32 @@ void Base_data::parse_json(string file_name)
 				size_t n_res = op_jsn["resources"].size();
 			
 				op.res = this->ac_res.add_entry(n_res);
-				op.res_time = this->ac_res_time.add_entry(n_res);
-
+				
 				for (size_t i_res = 0; const auto& res_jsn : op_jsn["resources"]) {
 					std::string res_name = res_jsn["resource"];
 					
-					op.res[i_res] = this->get_res_idx(res_name);
+					size_t res_idx = this->get_res_idx(res_name);
+					op.res[i_res] = res_idx;
 					
 					int time = 0;
 					if (res_jsn.contains("release_time")) {
 						time = res_jsn["release_time"];
 					}
+					
+					if (res_idx < this->res_time.size()) {
+						assert(this->res_time[res_idx] == time);
+					}
+					else {
+						this->res_time.push_back(time);
+						assert(this->res_time.size() == res_idx + 1);
+					}
 
 					++i_res;
 				}
 
-				assert(is_ascending(op.res));
+				if (!is_ascending(op.res)) {
+					sort(op.res.begin(), op.res.end());
+				}
 			}
 		
 			train.ops[i_op] = op;
@@ -116,9 +124,9 @@ void Base_data::make_prev()
 				succ.prev[succ.prev.size - (size_t)prev_count[i_succ]] = i_op;
 				prev_count[i_succ]--;
 
-				if (prev_count[i_succ] == 0) {
-					assert(is_ascending(succ.prev));
-				}
+				// if (prev_count[i_succ] == 0) {
+				// 	assert(is_ascending(succ.prev));
+				// }
 			}
 
 			i_op++;

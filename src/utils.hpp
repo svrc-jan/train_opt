@@ -8,6 +8,8 @@
 #include <map>
 #include <utility>
 #include <random>
+#include <functional>
+#include <algorithm>
 
 
 // #include <boost/multiprecision/cpp_int.hpp>
@@ -21,6 +23,28 @@ using json = nlohmann::json;
 // typedef boost::multiprecision::uint256_t mask_t;
 
 
+struct Vector_hasher {
+    int operator()(const std::vector<int> &v) const {
+        int hash = v.size();
+        for(auto &i : v) {
+            hash ^= i + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+        }
+        return hash;
+    }
+};
+
+struct Pair_hasher {
+    int operator()(const std::pair<int, int> &p) const {
+        int hash = 2;
+        
+		hash ^= p.first + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+		hash ^= p.second + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+        
+        return hash;
+    }
+};
+
+
 typedef std::uniform_int_distribution<> unif_int_dist;
 
 
@@ -28,8 +52,6 @@ bool file_exists(const std::string& name);
 
 json get_json_file(const std::string& file_name);
 
-template<typename T>
-bool is_ascending(const T& iterable);
 
 template<typename T>
 void print_vec(std::ostream& os, const std::vector<T>& vec);
@@ -81,6 +103,7 @@ public:
 
 	int operator()(const int range);
 	int operator()(const int start, const int end);
+	int operator()(const std::vector<int>& vec);
 
 
 private:

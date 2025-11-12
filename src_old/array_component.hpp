@@ -15,6 +15,8 @@ struct Array_block
 
 	T* begin() { return this->begin_ptr; }
 	T* end() { return this->end_ptr;}
+
+	bool operator==(const Array_block<T>& other) const;
 };
 
 struct Array_entry_local

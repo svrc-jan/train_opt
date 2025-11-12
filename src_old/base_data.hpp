@@ -13,6 +13,8 @@ using namespace std;
 
 struct Base_op
 {
+	int idx = -1;
+
 	int dur = 0;
 	int start_lb = 0;
 	int start_ub = 0;
@@ -20,7 +22,6 @@ struct Base_op
 	Array_entry<int> succ;
 	Array_entry<int> prev;
 	Array_entry<int> res;
-	Array_entry<int> res_time;
 };
 
 #define S sizeof(Array_entry<int>)
@@ -38,17 +39,18 @@ public:
 	~Base_data();
 
 	vector<Base_train> trains;
+	int n_ops = 0;
 
 private:
 	Array_component<Base_op> ac_ops;
 	Array_component<int> ac_succ;
 	Array_component<int> ac_prev;
 	Array_component<int> ac_res;
-	Array_component<int> ac_res_time;
 
 	unordered_map<string, int> res_name_idx_map;
+	vector<int> res_time;
 
-	string file_name;
+
 	void parse_json(string file_name);
 	void make_prev();
 
