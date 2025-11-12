@@ -12,93 +12,74 @@ using namespace std;
 
 #define MAX_INT numeric_limits<int>::max()
 
+
+
 struct Res
 {
 	int idx = -1;
 	int time = 0;
 };
 
-inline bool operator<(const Res& a, const Res& b)
-{ return a.idx < b.idx; }
-
 struct Op
 {
 	int idx = -1;
 	int train = -1;
+	
 	int dur = 0;
 	int start_lb = 0;
 	int start_ub = MAX_INT;
 
-	int n_succ = 0;
-	int n_prev = 0;
+	Array<int> succ = {nullptr, 0};
+	Array<int> prev = {nullptr, 0};
+	Array<Res> res = {nullptr, 0};
 
-	vector<int> v_prev = {};
-	vector<int> v_succ = {};
+	inline int& n_succ() { return this->succ.size; }
+	inline int& n_prev() { return this->prev.size; }
+	inline int& n_res() { return this->res.size; }
 
-	vector<int> v_res = {};
+	inline int n_succ() const { return this->succ.size; }
+	inline int n_prev() const { return this->prev.size; }
+	inline int n_res() const { return this->res.size; }
 };
 
 
 struct Train
 {
 	int idx = -1;
-	int begin = -1;
-	int end = -1;
+	int op_begin = -1;
+
+	Array<Op> ops = {nullptr, 0};
+
+	inline int& n_ops() { return this->ops.size; }
+	inline int n_ops() const { return this->ops.size; }
 };
 
-struct Res_use
-{
-	int lock = -1;
-	int unlock = -1;
-	int time = 0;
-};
 
 class Instance
 {
 public:
-	vector<Train> v_train = {};
-	vector<Op> v_op = {};
-
+	vector<Op> ops = {};
+	vector<Train> trains = {};
+	unordered_map<string, int> res_name_to_idx;
+	
 	Instance(string file_name);
 	~Instance();
 
-	inline int res_time(int res, int op) const
-	{ return this->mp_res_time.find({res, op})->second; }
-
-	inline int n_res() const
-	{ return this->mp_res_name_idx.size(); }
-
-	const pair<vector<int>, vector<int>>& res_diff(int first, int second) const;
-	const vector<Res_use>& res_uses(const vector<int>& path) const;
-
+	inline int n_ops() const { return this->ops.size(); }
+	inline int n_trains() const { return this->trains.size(); }
+	inline int n_res() const { return this->res_name_to_idx.size(); }
 
 private:
-	unordered_map<string, int> mp_res_name_idx;
-	unordered_map<
-		pair<int, int>,
-		int,
-		Pair_hasher
-	> mp_res_time = {};
-	
-	mutable unordered_map<
-		pair<int, int>, 
-		pair<vector<int>, vector<int>>,
-		Pair_hasher
-	> mp_res_diff_cache;
+	vector<int> op_succ;
+	vector<int> op_prev;
+	vector<Res> op_res;
 
-	mutable unordered_map<
-		vector<int>, 
-		vector<Res_use>,
-		Vector_hasher
-	> mp_res_uses_cache;
-	
 	void parse_json_file(const string file_name);
 	void parse_json_train(const json& train_jsn);
 	void parse_json_op(const json& op_jsn, Train& train);
 
+	void assign_array_pointers();
 	void assign_prev_ops();
-	pair<vector<int>, vector<int>> _res_diff(int first, int second) const;
-	vector<Res_use> _res_uses(const vector<int>& path) const;
 
 	int get_res_idx(string name);
 };

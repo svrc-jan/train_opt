@@ -23,8 +23,8 @@ int main(int argc, char const *argv[])
 	// 	cout << "Point " << point.idx << " - in: " << point.vb_in_op << ", out: " << point.vb_out_op << endl;
 	// }
 
-	for (const Train& train : inst.v_train) {
-		cout << train.idx << "(" << train.end - train.begin << ")" << endl;
+	for (const Train& train : inst.trains) {
+		cout << train.idx << "(" << train.n_ops() << ")" << endl;
 	}
 
 	return 0;
