@@ -90,8 +90,10 @@ void Instance::assign_array_pointers()
 	// train -> op
 	idx = 0;
 	for (Train& train : this->trains) {
-		train.ops.ptr = &(this->ops[idx]);
-		idx += train.n_ops();
+		if (train.n_ops() > 0) {
+			train.ops.ptr = &(this->ops[idx]);
+			idx += train.n_ops();
+		}
 	}
 	assert(idx == this->n_ops());
 
@@ -101,7 +103,10 @@ void Instance::assign_array_pointers()
 		if (op.n_succ() > 0) {
 			op.succ.ptr = &(this->op_succ[idx]);
 			idx += op.n_succ();
-		}	
+		}
+		else {
+			op.succ.ptr = nullptr;
+		}
 	}
 	assert(idx == (int)this->op_succ.size());
 
@@ -111,6 +116,9 @@ void Instance::assign_array_pointers()
 		if (op.n_res() > 0) {
 			op.res.ptr = &(this->op_res[idx]);
 			idx += op.n_res();
+		}
+		else {
+			op.res.ptr = nullptr;
 		}
 	}
 	assert(idx == (int)this->op_res.size());

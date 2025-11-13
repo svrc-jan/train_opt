@@ -19,5 +19,5 @@ include_directories(
 
 file(GLOB SOURCES "src/*.cpp" "src/utils/*.cpp")
 
-add_executable(base_data_test apps/base_data_test.cpp ${SOURCES})
-# add_executable(solution_test apps/solution_test.cpp ${SOURCES})
+add_executable(instance_test apps/instance_test.cpp ${SOURCES})
+add_executable(graph_test apps/graph_test.cpp ${SOURCES})

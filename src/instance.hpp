@@ -61,7 +61,7 @@ class Instance
 public:
 	vector<Op> ops = {};
 	vector<Train> trains = {};
-	unordered_map<string, int> res_name_to_idx;
+	unordered_map<string, int> res_name_to_idx = {};
 	
 	Instance(string file_name);
 	~Instance();
@@ -71,9 +71,9 @@ public:
 	inline int n_res() const { return this->res_name_to_idx.size(); }
 
 private:
-	vector<int> op_succ;
-	vector<int> op_prev;
-	vector<Res> op_res;
+	vector<int> op_succ = {};
+	vector<int> op_prev = {};
+	vector<Res> op_res = {};
 
 	void parse_json_file(const string file_name);
 	void parse_json_train(const json& train_jsn);
