@@ -1,7 +1,7 @@
-app="build/base_data_test"
+app="build/instance_test"
 
 for file in data/*.json
 do
-    echo $file
+    #echo $file
     $app "$file"
 done

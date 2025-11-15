@@ -8,6 +8,19 @@
 #include <utility>
 
 template<typename T>
+std::ostream& operator<< (std::ostream& os, const std::vector<T>& vec);
+
+template<typename T>
+std::ostream& operator<< (std::ostream& os, const std::list<T>& lst);
+
+template<typename Tk, typename Tv>
+void print_map(std::ostream& os, const std::map<Tk, Tv>& mp);
+
+template<typename Ta, typename Tb>
+std::ostream& operator<< (std::ostream& os, const std::pair<Ta, Tb>& pr);
+
+
+template<typename T>
 void print_vec(std::ostream& os, const std::vector<T>& vec)
 {
 	os << "[";

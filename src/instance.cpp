@@ -1,12 +1,19 @@
 #include "instance.hpp"
 
-#include <iostream>
+#include <queue>
+
+#include "utils/files.hpp"
+#include "utils/disjoint_set.hpp"
+
 
 Instance::Instance(string file_name)
 {
 	this->parse_json_file(file_name);
 	this->assign_array_pointers();
 	this->assign_prev_ops();
+	this->sort_arrays();
+	this->assign_levels();
+	this->calculate_dist_to_end();
 }
 
 
@@ -19,6 +26,7 @@ void Instance::parse_json_file(const string file_name)
 {
 
 	json inst_jsn = get_json_file(file_name);
+	this->reserve_mem(inst_jsn);
 	
 	for (const json& train_jsn : inst_jsn["trains"]) {
 		this->parse_json_train(train_jsn);
@@ -32,7 +40,7 @@ void Instance::parse_json_train(const json& train_jsn)
 		.op_begin = this->n_ops()
 	};
 
-	for (const auto& op_jsn : train_jsn) {
+	for (const json& op_jsn : train_jsn) {
 		this->parse_json_op(op_jsn, train);
 	}
 
@@ -57,13 +65,17 @@ void Instance::parse_json_op(const json& op_jsn, Train& train)
 	}
 
 	
-	for (int i_succ : op_jsn["successors"]) {
+	for (int s : op_jsn["successors"]) {
+		int succ_idx = s + train.op_begin;
+		
+		assert(succ_idx > op.idx);
+
 		op.n_succ()++;
-		this->op_succ.push_back(i_succ + train.op_begin);
+		this->op_succ.push_back(succ_idx);
 	}
+
 	
 	if (op_jsn.contains("resources")) {
-
 		for (const auto& res_jsn : op_jsn["resources"]) {
 			string res_name = res_jsn["resource"];
 			int res_idx = this->get_res_idx(res_name);
@@ -83,6 +95,33 @@ void Instance::parse_json_op(const json& op_jsn, Train& train)
 }
 
 
+void Instance::reserve_mem(const json& inst_jsn)
+{
+	int ops_size = 0;
+	int trains_size = 0;
+	int succ_size = 0;
+	int res_size = 0;
+
+	for (const json& train_jsn : inst_jsn["trains"]) {
+		trains_size++;
+
+		for (const json& op_jsn : train_jsn) {
+			ops_size++;
+
+			succ_size += op_jsn["successors"].size();
+			if (op_jsn.contains("resources")) {
+				res_size += op_jsn["resources"].size();
+			}
+		}
+	}
+
+	this->ops.reserve(ops_size);
+	this->trains.reserve(trains_size);
+	this->op_succ.reserve(succ_size);
+	this->op_res.reserve(res_size);
+}
+
+
 void Instance::assign_array_pointers()
 {
 	int idx;
@@ -91,10 +130,13 @@ void Instance::assign_array_pointers()
 	idx = 0;
 	for (Train& train : this->trains) {
 		if (train.n_ops() > 0) {
+			assert(train.op_begin == idx);
+
 			train.ops.ptr = &(this->ops[idx]);
 			idx += train.n_ops();
 		}
 	}
+
 	assert(idx == this->n_ops());
 
 	// op -> succ
@@ -156,6 +198,227 @@ void Instance::assign_prev_ops()
 }
 
 
+void Instance::sort_arrays()
+{
+	for (Op& op : this->ops) {
+		if (!op.succ.is_asc()) {
+			op.succ.sort();
+		}
+
+		if (!op.prev.is_asc()) {
+			op.prev.sort();
+		}
+
+		if (!op.res.is_asc()) {
+			op.res.sort();
+		}
+	}
+}
+
+
+void Instance::assign_levels()
+{
+	this->level_ops_out.reserve(this->n_ops());
+
+	for (Train& train : this->trains) {
+		train.level_begin = this->n_levels();
+
+		Disjoint_set ds(train.n_ops());
+		
+		for (const Op& op : train.ops) {
+			for (int i = 0; i < op.n_succ(); i++) {
+				int a = op.succ[i] - train.op_begin;
+				for (int j = i + 1; j < op.n_succ(); j++) {
+					int b = op.succ[j] - train.op_begin;
+
+					ds.union_set(a, b);
+				}
+			}
+		}
+
+		auto sets = ds.get_sets();
+
+		this->levels.reserve(this->levels.size() + sets.first.size() + 1);
+
+		int sets_idx = 0;
+		for (auto set_size : sets.first) {
+			Level level = {
+				.idx = this->n_levels(),
+				.train = train.idx
+			};
+
+			level.n_ops_out() = set_size;
+
+			for (int i = 0; i < set_size; i++) {
+				int o = sets.second[i + sets_idx] + train.op_begin;
+				this->ops[o].level_start = level.idx;	
+			}
+			sets_idx += set_size;
+
+
+			train.n_levels() += 1;
+			this->levels.push_back(level);
+		}
+		assert(sets_idx == train.n_ops());
+
+		Level last_level = {
+			.idx = this->n_levels(),
+			.train = train.idx
+		};
+		train.ops.back().level_end = last_level.idx;
+
+		train.n_levels() += 1;
+		this->levels.push_back(last_level);
+
+		for (int i : sets.second) {
+			this->level_ops_out.push_back(i + train.op_begin);
+		}
+	}
+	
+	// assign levels to trains
+	int idx_level = 0;
+	for (Train& train : this->trains) {
+		train.levels.ptr = &(this->levels[train.level_begin]);
+		assert(idx_level == train.level_begin);
+		idx_level += train.n_levels();
+	}
+	assert(idx_level == this->n_levels());
+
+
+	// assign level ends to ops
+	for (Op& op : this->ops) {
+		for (int p : op.prev) {
+			Op& prev = this->ops[p];
+
+			if (prev.level_end == -1) {
+				prev.level_end = op.level_start;
+			}
+			else {
+				assert(prev.level_end == op.level_start);
+			}
+		}
+	}
+
+	// count ops in for levels
+	for (Op& op : this->ops) {
+		assert(op.level_start != -1 && op.level_end != -1);
+		this->levels[op.level_end].n_ops_in() += 1;
+	}
+
+	// assign ops out and ops in array pointers
+	this->level_ops_in.resize(this->n_ops());
+
+	int idx_out = 0;
+	int idx_in = 0;
+
+	for (Level& level : this->levels) {
+		if (level.n_ops_out() > 0) {
+			level.ops_out.ptr = &(this->level_ops_out[idx_out]);
+			idx_out += level.n_ops_out();
+		}
+		
+		if (level.n_ops_in() > 0) {
+			level.ops_in.ptr = &(this->level_ops_in[idx_in]);
+			idx_in += level.n_ops_in();
+		}
+	}
+	
+	assert(idx_out == this->n_ops());
+	assert(idx_in == this->n_ops());
+
+	// fill ops in
+	vector<int> level_ops_in_filled(this->n_levels(), 0);
+	for (Op& op : this->ops) {
+		int le = op.level_end;
+		this->levels[le].ops_in[level_ops_in_filled[le]++] = op.idx;
+	}
+
+	for (const Level& level : this->levels) {
+		assert(level_ops_in_filled[level.idx] == level.n_ops_in());
+	}
+	level_ops_in_filled.clear();
+
+
+	// check if all op_in -> op_out transitions are allowed
+
+	vector<int> idx_allowed(this->n_levels(), -1);
+	for (Level& level : this->levels) {
+		vector<uint8_t> allowed(level.n_ops_in()*level.n_ops_out(), 1);
+
+		bool allowed_req = false;
+
+		for (int i = 0; i < level.n_ops_in(); i++) {
+			int op_in = level.ops_in[i];
+			if (this->ops[op_in].n_succ() == level.n_ops_out()) {
+				continue;
+			}
+
+			for (int j = 0; j < level.n_ops_out(); j++) {
+				
+				int op_out = level.ops_out[j];
+
+				if (this->ops[op_in].succ.find_sorted(op_out) == -1) {
+					allowed_req = true;
+					allowed[i*level.n_ops_in()] = 0;
+				}
+			}
+		}
+
+		if (allowed_req) {
+			idx_allowed[level.idx] = this->level_allowed.size();
+		
+			this->level_allowed.reserve(this->level_allowed.size() + allowed.size());
+			this->level_allowed.insert(this->level_allowed.end(),
+				allowed.begin(), allowed.end());
+		}		
+	}
+
+	// assign array pointers
+	for (Level& level : this->levels) {
+		if (idx_allowed[level.idx] > -1) {
+			level.allowed = &(this->level_allowed[idx_allowed[level.idx]]);
+		}
+	}
+}
+
+
+void Instance::calculate_dist_to_end()
+{
+	vector<int> out_remaining(this->n_levels());
+	for (Level& level : this->levels) {
+		out_remaining[level.idx] = level.n_ops_out();
+	}
+
+	for (Train& train : this->trains) {
+		Level& last_level = train.levels.back();
+
+		last_level.dur_to_end = 0;
+
+		queue<int> q({last_level.idx});
+
+		while (!q.empty()) {
+			const Level& curr_level = this->levels[q.front()];
+			q.pop();
+
+			for (int o : curr_level.ops_in) {
+				const Op& op = this->ops[o];
+				int pl = op.level_start;
+				Level& prev_level = this->levels[pl];
+
+				prev_level.dur_to_end = min(
+					prev_level.dur_to_end, 
+					curr_level.dur_to_end + op.dur);
+				
+				out_remaining[pl] -= 1;
+				if (out_remaining[pl] == 0) {
+					q.push(pl);
+				}
+			}
+		}
+	}
+	
+}
+
 int Instance::get_res_idx(string name)
 {
 	unordered_map<string, int>& m = this->res_name_to_idx;
@@ -172,4 +435,33 @@ int Instance::get_res_idx(string name)
 	}
 
 	return idx;
+}
+
+
+bool Level::is_allowed(int op_in, int op_out) const
+{
+	if (this->allowed == nullptr) {
+		return true;
+	}
+
+	int i = this->ops_in.find_sorted(op_in);
+	int j = this->ops_in.find_sorted(op_out);
+
+	assert(i != -1 && j != -1);
+
+	return (bool)this->allowed[i*this->n_ops_in() + j];
+}
+
+
+std::ostream& operator<<(std::ostream& stream, const Op& op)
+{
+	stream << "Op(idx=" << op.idx << ", train=" << op.train <<")";
+	return stream;
+}
+
+
+std::ostream& operator<<(std::ostream& stream, const Level& level)
+{
+	stream << "Level(idx=" << level.idx << ", train=" << level.train <<")";
+	return stream;
 }
