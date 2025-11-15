@@ -26,20 +26,24 @@ struct Res
 	inline bool operator==(const Res& other) const { return this->idx == other.idx; }
 };
 
+
+struct Level;
+struct Train;
+
 struct Op
 {
 	int idx = -1;
-	int train = -1;
+	Train* train = nullptr;
 	
 	int dur = 0;
 	int start_lb = 0;
 	int start_ub = MAX_INT;
 
-	int level_start = -1;
-	int level_end = -1;
+	Level* level_start = nullptr;
+	Level* level_end = nullptr;
 
-	Array<int> succ = {nullptr, 0};
-	Array<int> prev = {nullptr, 0};
+	Array<Op*> succ = {nullptr, 0};
+	Array<Op*> prev = {nullptr, 0};
 	Array<Res> res = {nullptr, 0};
 
 	inline int& n_succ() { return this->succ.size; }
@@ -55,12 +59,12 @@ struct Op
 struct Level
 {
 	int idx = -1;
-	int train = -1;
+	Train* train = nullptr;
 
 	int dur_to_end = MAX_INT;
 
-	Array<int> ops_in = {nullptr, 0};
-	Array<int> ops_out = {nullptr, 0};
+	Array<Op *> ops_in = {nullptr, 0};
+	Array<Op *> ops_out = {nullptr, 0};
 
 	uint8_t* allowed = nullptr;
 
@@ -70,10 +74,7 @@ struct Level
 	inline int n_ops_in() const { return this->ops_in.size; }
 	inline int n_ops_out() const { return this->ops_out.size; }
 
-	bool is_allowed(int op_in, int op_out) const;
-
-	std::ostream& operator<<(ostream& stream) const
-	{ return stream << "Level(idx=" << this->idx << ", train=" << this->train <<")"; }
+	bool is_allowed(Op* op_in, Op* op_out) const;
 };
 
 
@@ -111,12 +112,12 @@ public:
 	inline int n_res() const { return this->res_name_to_idx.size(); }
 
 private:
-	vector<int> op_succ = {};
-	vector<int> op_prev = {};
+	vector<Op *> op_succ = {};
+	vector<Op *> op_prev = {};
 	vector<Res> op_res = {};
 
-	vector<int> level_ops_in = {};
-	vector<int> level_ops_out = {};
+	vector<Op *> level_ops_in = {};
+	vector<Op *> level_ops_out = {};
 
 	vector<uint8_t> level_allowed = {};
 
@@ -126,7 +127,7 @@ private:
 
 	void reserve_mem(const json& inst_jsn);
 
-	void assign_array_pointers();
+	void assign_pointers();
 	void assign_prev_ops();
 	void sort_arrays();
 	void assign_levels();
