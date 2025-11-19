@@ -15,20 +15,21 @@ using namespace std;
 
 #define MAX_INT numeric_limits<int>::max()
 
-
-struct Res
-{
-	int idx = -1;
-	int time = 0;
-
-	inline bool operator<(const Res& other) const { return this->idx < other.idx; }
-	inline bool operator>(const Res& other) const { return this->idx > other.idx; }
-	inline bool operator==(const Res& other) const { return this->idx == other.idx; }
-};
-
-
+struct Op;
 struct Level;
 struct Train;
+
+
+struct Res_info
+{
+	Op* last_op = nullptr;
+	Op* next_op = nullptr;
+	int time = 0;
+	int next_res_i = -1;
+	int unlock_dur = MAX_INT;
+	int unlock_jumps = 1;
+};
+
 
 struct Op
 {
@@ -44,7 +45,8 @@ struct Op
 
 	Array<Op*> succ = {nullptr, 0};
 	Array<Op*> prev = {nullptr, 0};
-	Array<Res> res = {nullptr, 0};
+	Array<int> res = {nullptr, 0};
+	Res_info* res_info = nullptr;
 
 	inline int& n_succ() { return this->succ.size; }
 	inline int& n_prev() { return this->prev.size; }
@@ -66,7 +68,7 @@ struct Level
 	Array<Op *> ops_in = {nullptr, 0};
 	Array<Op *> ops_out = {nullptr, 0};
 
-	uint8_t* allowed = nullptr;
+	uint32_t* allowed = nullptr;
 
 	inline int& n_ops_in() { return this->ops_in.size; }
 	inline int& n_ops_out() { return this->ops_out.size; }
@@ -83,6 +85,8 @@ struct Train
 	int idx = -1;
 	int op_begin = -1;
 	int level_begin = -1;
+
+	int max_dur = MAX_INT;
 
 	Array<Op> ops = {nullptr, 0};
 	Array<Level> levels = {nullptr, 0};
@@ -103,6 +107,8 @@ public:
 	vector<Train> trains = {};
 	unordered_map<string, int> res_name_to_idx = {};
 
+	int max_dur = MAX_INT;
+
 	Instance(string file_name);
 	~Instance();
 
@@ -111,15 +117,21 @@ public:
 	inline int n_levels() const { return this->levels.size(); }
 	inline int n_res() const { return this->res_name_to_idx.size(); }
 
+	inline int n_op_succ() const { return this->op_succ.size(); }
+
 private:
 	vector<Op *> op_succ = {};
 	vector<Op *> op_prev = {};
-	vector<Res> op_res = {};
+	vector<int> op_res = {};
+	vector<Res_info> op_res_info = {};
+
+	vector<Op *> res_unlock_path = {};
 
 	vector<Op *> level_ops_in = {};
 	vector<Op *> level_ops_out = {};
 
-	vector<uint8_t> level_allowed = {};
+	vector<uint32_t> level_allowed = {};
+
 
 	void parse_json_file(const string file_name);
 	void parse_json_train(const json& train_jsn);
@@ -133,8 +145,12 @@ private:
 	void assign_levels();
 
 	void calculate_dist_to_end();
+	void adjust_start_ub();
+	void find_unlock_paths();
 
 	int get_res_idx(string name);
+
+	vector<Op*> find_path(Op* start, Op* end);
 };
 
 std::ostream& operator<<(std::ostream& stream, const Op& op);

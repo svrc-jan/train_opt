@@ -17,6 +17,9 @@ int main(int argc, char const *argv[])
 
 	Instance inst(file_name);
 
+	Graph graph(inst);
+
+	cout << graph.get_events();
 
 	return 0;
 }

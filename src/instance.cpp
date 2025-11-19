@@ -1,6 +1,8 @@
 #include "instance.hpp"
 
+#include <unordered_set>
 #include <queue>
+#include <algorithm>
 #include <iostream>
 
 #include "utils/files.hpp"
@@ -15,6 +17,8 @@ Instance::Instance(string file_name)
 	this->sort_arrays();
 	this->assign_levels();
 	this->calculate_dist_to_end();
+	this->adjust_start_ub();
+	this->find_unlock_paths();
 }
 
 
@@ -86,7 +90,8 @@ void Instance::parse_json_op(const json& op_jsn, Train& train)
 			}
 			
 			op.res.size++;
-			this->op_res.push_back({res_idx, res_time});
+			this->op_res.push_back(res_idx);
+			this->op_res_info.push_back({.time = res_time});
 		}
 	}
 
@@ -119,11 +124,7 @@ void Instance::reserve_mem(const json& inst_jsn)
 	this->trains.reserve(trains_size);
 	this->op_succ.reserve(succ_size);
 	this->op_res.reserve(res_size);
-
-	cout << "ops" << &(this->ops[0]) << endl;
-	cout << "trains" << &(this->trains[0]) << endl;
-	cout << "op_succ" << &(this->op_succ[0]) << endl;
-	cout << "op_ress" << &(this->op_res[0]) << endl;
+	this->op_res_info.reserve(res_size);
 }
 
 
@@ -151,9 +152,6 @@ void Instance::assign_pointers()
 			op.succ.ptr = &(this->op_succ[idx]);
 			idx += op.n_succ();
 		}
-		else {
-			op.succ.ptr = nullptr;
-		}
 	}
 	assert(idx == (int)this->op_succ.size());
 
@@ -162,10 +160,9 @@ void Instance::assign_pointers()
 	for (Op& op : this->ops) {
 		if (op.n_res() > 0) {
 			op.res.ptr = &(this->op_res[idx]);
+			op.res_info = &(this->op_res_info[idx]);
+
 			idx += op.n_res();
-		}
-		else {
-			op.res.ptr = nullptr;
 		}
 	}
 	assert(idx == (int)this->op_res.size());
@@ -356,23 +353,22 @@ void Instance::assign_levels()
 
 	vector<int> idx_allowed(this->n_levels(), -1);
 	for (Level& level : this->levels) {
-		vector<uint8_t> allowed(level.n_ops_in()*level.n_ops_out(), 1);
+		assert(level.n_ops_out() <= 32);
 
 		bool allowed_req = false;
-
+		vector<uint32_t> allowed(level.n_ops_in(), 0);
+		
 		for (int i = 0; i < level.n_ops_in(); i++) {
 			Op* op_in = level.ops_in[i];
-			if (op_in->n_succ() == level.n_ops_out()) {
-				continue;
-			}
 
 			for (int j = 0; j < level.n_ops_out(); j++) {
-				
 				Op* op_out = level.ops_out[j];
 
 				if (op_in->succ.find_sorted(op_out) == -1) {
 					allowed_req = true;
-					allowed[i*level.n_ops_in()] = 0;
+				}
+				else {
+					allowed[i] |= (1U << j);
 				}
 			}
 		}
@@ -392,6 +388,8 @@ void Instance::assign_levels()
 			level.allowed = &(this->level_allowed[idx_allowed[level.idx]]);
 		}
 	}
+
+	// set level start and end i
 }
 
 
@@ -402,6 +400,7 @@ void Instance::calculate_dist_to_end()
 		out_remaining[level.idx] = level.n_ops_out();
 	}
 
+	this->max_dur = 0;
 	for (Train& train : this->trains) {
 		Level* last_level = &(train.levels.back());
 
@@ -426,9 +425,110 @@ void Instance::calculate_dist_to_end()
 				}
 			}
 		}
+
+		train.max_dur = train.levels[0].dur_to_end;
+		this->max_dur += train.max_dur;
 	}
-	
 }
+
+
+struct Op_order
+{
+	Op* op = nullptr;
+	int time = 0;
+
+	inline bool operator<(const Op_order& other) { return this->time > other.time; }
+};
+
+
+void Instance::adjust_start_ub()
+{
+
+}
+
+
+void Instance::find_unlock_paths()
+{
+	// vector<int> n_succ(this->n_ops());
+	// queue<Op *> q;
+
+	// for (Op& op : this->ops) {
+	// 	n_succ[op.idx] = op.n_succ();
+	// 	if (op.n_succ() == 0) {
+	// 		q.push(&(this->ops[op.idx]));
+	// 	}
+	// }
+
+	// while(!q.empty()) {
+	// 	Op* op = q.front(); q.pop();
+
+	// 	for (Op* prev : op->prev) {
+	// 		n_succ[prev->idx] -= 1;
+	// 		if (n_succ[prev->idx] == 0) {
+	// 			q.push(prev);				
+	// 		}
+	// 	}
+
+	for (int o = this->n_ops() - 1; o >= 0; o--) {
+		Op* op = &(this->ops[o]);
+
+		for (int i = 0; i < op->n_res(); i++) {
+			int res_idx = op->res[i];
+
+
+			Res_info& res_info = op->res_info[i];
+			int orig_time = res_info.time;
+
+			bool unlockable = false;
+			
+			for (Op* succ : op->succ) {
+				int succ_i = succ->res.find(res_idx);
+				
+				if (succ_i == -1) {
+					unlockable = true;
+					continue;
+				}
+
+				Res_info& succ_info = succ->res_info[succ_i];
+
+				bool succ_better = false;
+				if (succ_info.unlock_dur < res_info.unlock_dur) {
+					succ_better = true;
+				}
+				else if (succ_info.unlock_dur == res_info.unlock_dur) {
+					if (succ_info.unlock_jumps == res_info.unlock_jumps) {
+						succ_better = true;
+					}
+				}
+
+				if (succ_better) {
+					res_info = {
+						.last_op = succ_info.last_op,
+						.next_op = succ,
+						.time = succ_info.time,
+						.next_res_i = succ_i,
+						.unlock_dur = succ_info.unlock_dur + op->dur,
+						.unlock_jumps = succ_info.unlock_jumps + 1
+					};
+				}
+
+				assert(succ_info.last_op != nullptr);
+			}
+
+			if (unlockable || res_info.last_op == nullptr) {
+				res_info = {
+					.last_op = op,
+					.next_op = nullptr,
+					.time = orig_time,
+					.next_res_i = -1,
+					.unlock_dur = op->dur + orig_time,
+					.unlock_jumps = 1
+				};
+			}
+		}
+	}
+}
+
 
 int Instance::get_res_idx(string name)
 {
@@ -449,6 +549,58 @@ int Instance::get_res_idx(string name)
 }
 
 
+vector<Op*> Instance::find_path(Op* start, Op* end)
+{
+	if (start->train != end->train || start->idx > end->idx) {
+		return {};
+	}
+
+	if (start == end) {
+		return {start};
+	}
+
+	
+	unordered_map<Op *, Op *> prev_op;
+
+	queue<Op*> q;
+	q.push(start);
+
+	while (!q.empty()) {
+		Op* curr = q.front(); q.pop();
+		if (curr == end) {
+			break;
+		}
+
+		for (Op* succ : curr->succ) {
+			if (prev_op.find(succ) == prev_op.end()) {
+				q.push(succ);
+				prev_op[succ] == curr;
+			}
+		}
+	}
+
+	vector<Op*> path = {end};
+
+	auto it = prev_op.find(end);
+	if (it == prev_op.end()) {
+		return {};
+	}
+
+	while (true) {
+		Op* op = it->second;
+		path.push_back(op);
+		if (op == start) {
+			break;
+		}
+		it = prev_op.find(it->second);
+	}
+	
+	reverse(path.begin(), path.end());
+	
+	return path;
+}
+
+
 bool Level::is_allowed(Op* op_in, Op* op_out) const
 {
 	if (this->allowed == nullptr) {
@@ -460,7 +612,7 @@ bool Level::is_allowed(Op* op_in, Op* op_out) const
 
 	assert(i != -1 && j != -1);
 
-	return (bool)this->allowed[i*this->n_ops_in() + j];
+	return (this->allowed[i] & (1U << j) != 0);
 }
 
 
