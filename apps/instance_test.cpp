@@ -20,19 +20,8 @@ int main(int argc, char const *argv[])
 	cout << file_name << endl;
 	Instance inst(file_name);
 
-	int max_n_succ = 0;
-	map<int, int> unlock_path_len;
-
-	for (Op& op : inst.ops) {
-		max_n_succ = max(max_n_succ, op.n_succ());
-		for (int i = 0; i < op.n_res(); i++) {
-			unlock_path_len[op.res_info[i].unlock_jumps] += 1;
-		}
-	}
-
-	cout << unlock_path_len << endl;
-	cout << max_n_succ << endl;
-
+	cout << "levels: " << inst.n_levels() << endl;
+	cout << "ops:    " << inst.n_ops() << endl;
 
 
 	return 0;

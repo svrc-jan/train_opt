@@ -1,183 +1,110 @@
 #include "graph.hpp"
 
+#include <algorithm>
+#include <queue>
+
+
+
+
 Graph::Graph(const Instance& inst) : inst(inst)
 {
-	this->nodes.reserve(this->inst.n_levels());
-	this->in_degree.reserve(this->inst.n_levels());
-
-	for (const Level& level : this->inst.levels) {
-		Node node;
-
-		assert(level.n_ops_out() <= 32);
-		for (int i = 0; i < level.n_ops_out(); i++) {
-			node.viable_out_flag |= (1U << i);
-		}
-
-		this->nodes.push_back(node);
-		this->in_degree.push_back(level.n_ops_in());
-	}
+	this->res_cons.resize(this->inst.n_levels(), vector<Res_cons>());
+	this->n_in_res_cons.resize(this->inst.n_levels(), 0);
 }
 
 
-
-vector<int> Graph::get_order(vector<int>& time, vector<const Op *>& in_op)
+struct Order_item
 {
-	vector<int> in_count = this->in_degree;
-	vector<int> res_time(this->n_nodes(), 0);
+	int time;
+	int node;
+	int op;
+};
 
-	priority_queue<Node_time> q;
+class Order_comparator
+{
+public:
+	bool operator()(const Order_item& a, const Order_item& b) {
+		return a.time > b.time;
+	}
+};
 
-	time.resize(this->n_nodes());
-	in_op.resize(this->n_nodes());
+bool Graph::get_order(vector<int>& order, vector<int>& time, vector<int>& op_in)
+{	
 
-	for (int i = 0; i < this->n_nodes(); i++) {
-		time[i] = MAX_INT;
-		in_op[i] = nullptr;
+	order.clear();
+	order.reserve(this->inst.n_levels());
 
-		if (in_count[i] == 0) {
-			const Level& level = this->inst.levels[i];
-			
-			time[i] = level.ops_out[0]->start_lb;
-			q.push({
-				.node = level.idx,
-				.time = time[i]
-			});
-		}
+	time.resize(this->inst.n_levels());
+	
+	op_in.resize(this->inst.n_levels());
+	memset(op_in.data(), -1, sizeof(int)*this->inst.n_levels());
+
+	vector<int> res_cons_done(this->inst.n_levels(), 0);
+	
+	priority_queue<Order_item, vector<Order_item>, Order_comparator> pq;
+
+	for (auto& train : this->inst.trains) {
+		pq.push({
+			.time = train.ops[0].start_lb,
+			.node = train.level_begin,
+			.op = -2
+		});
 	}
 
-	vector<int> order;
-	order.reserve(this->n_nodes());
+	while (!pq.empty()) {
+		Order_item curr = pq.top(); pq.pop();
 
-	while (!q.empty()) {
-		Node_time curr = q.top(); q.pop();
+		if (curr.op != -1) { // path update
+			if (op_in[curr.node] == -1) {
+				op_in[curr.node] = curr.op; 
+			}
+			else {
+				continue;
+			}
+		}
+
+		if (op_in[curr.node] == -1 || res_cons_done[curr.node] < this->n_in_res_cons[curr.node]) {
+			continue;
+		}
 
 		order.push_back(curr.node);
-
-		const Node& node = this->nodes[curr.node];
-		const Level& level = this->inst.levels[curr.node];
+		time[curr.node] = curr.time;
 		
-		for (int i = 0; i < level.n_ops_out(); i++) {
-			if ((node.viable_out_flag & (1U << i)) == 0U) {
+		
+		for (int o : this->inst.levels[curr.node].ops_out) {
+			auto& op = this->inst.ops[o];
+
+			if (op_in[op.level_end] != -1) {
 				continue;
 			}
 
-			const Op* op = level.ops_out[i];
-			int succ_idx = op->level_end->idx;
-
-			int op_end = max(curr.time, op->start_lb) + op->dur;			
-			if (op_end < time[succ_idx]) {
-				time[succ_idx] = max(curr.time, op->start_lb) + op->dur;
-				in_op[succ_idx] = op;
-			}
-
-			in_count[succ_idx] -= 1;
-			if (in_count[succ_idx] == 0) {
-				time[succ_idx] = max(time[succ_idx], res_time[succ_idx]);
-
-				q.push({
-					.node = succ_idx,
-					.time = time[succ_idx]
-				});
-			}
+			pq.push({
+				.time = max(curr.time, op.start_lb) + op.dur,
+				.node = op.level_end,
+				.op = o
+			});
 		}
 
-		for (const Node_time& res_edge : node.res_edges) {
-			res_time[res_edge.node] = max(res_time[res_edge.node], curr.time + res_edge.time);
-			
-			in_count[res_edge.node] -= 1;
-			if (in_count[res_edge.node] == 0) {
-				time[res_edge.node] = max(time[res_edge.node], res_time[res_edge.node]);
-
-				q.push({
-					.node = res_edge.node,
-					.time = time[res_edge.node]
-				});
-			}
-		}
-	}
-
-	assert((int)order.size() == this->n_nodes());
-
-	return order;
-}
-
-
-
-vector<Event> Graph::get_events()
-{
-	vector<int> time(this->n_nodes());
-	vector<const Op*> in_op(this->n_nodes());
-	vector<const Op*> out_op(this->n_nodes(), nullptr);
-
-	vector<int> order = this->get_order(time, in_op);
-
-	int events_size = 0;
-	for (const Train& train: this->inst.trains) {
-		int curr_l = train.level_begin + train.n_levels() - 1;
-		while (curr_l != train.level_begin) {
-			const Op* op = in_op[curr_l];
-			assert(op != nullptr);
-
-			int prev_l = op->level_start->idx;
-			out_op[prev_l] = op;
-
-			curr_l = prev_l;
-
-			events_size += 1;
-		}
-		events_size += 1;
-	}
-
-	vector<Event> events;
-	events.reserve(events_size);
-
-	for (int l : order) {
-		if (out_op[l] != nullptr || this->inst.levels[l].n_ops_out() == 0) {
-			if (in_op[l] == nullptr) {
-				assert(out_op[l]->n_prev() == 0);
-			}
-
-			if (out_op[l] == nullptr) {
-				assert(in_op[l]->n_succ() == 0);
-			}
-
-			if (!events.empty()) {
-				assert(events.back().time <= time[l]);
-			}
-
-			events.push_back({
-				.in_op = in_op[l],
-				.out_op = out_op[l],
-				.time = time[l],
+		for (auto& rc : this->res_cons[curr.node]) {
+			res_cons_done[rc.node] += 1;
+			pq.push({
+				.time = curr.time + rc.time,
+				.node = rc.node,
+				.op = -1
 			});
 		}
 	}
-
-	return events;
+	
+	return (int)order.size() == this->inst.n_levels();
 }
 
 
-
-std::ostream& operator<<(std::ostream& stream, const Node_time& node_time)
+void Graph::add_res_cons(int from, int to, int time)
 {
-	stream << "(" << node_time.node << ", " << node_time.time << ")";
-	return stream;
+	this->res_cons[from].push_back({
+		.node = to,
+		.time = time
+	});
+
+	this->n_in_res_cons[to] += 1;
 }
-
-std::ostream& operator<<(std::ostream& stream, const Event& event)
-{
-	stream << "Event("; 
-
-	if (event.in_op != nullptr) {
-		stream << "in=" << event.in_op->idx << ", ";
-	}
-
-	if (event.out_op != nullptr) {
-		stream << "out=" << event.out_op->idx << ", ";
-	}
-
-	stream << "time=" << event.time << ")";
-
-	return stream;
-}
-

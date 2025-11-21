@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <vector>
 
 template<typename T>
 struct Array
@@ -23,6 +24,8 @@ struct Array
 
 	int find(const T& x) const;
 	int find_sorted(const T& x) const;
+
+	void assign_ptr(const std::vector<T>& vec, int& idx);
 };
 
 
@@ -80,6 +83,13 @@ int Array<T>::find_sorted(const T& x) const
 
 
 
-
+template<typename T>
+void Array<T>::assign_ptr(const std::vector<T>& vec, int& idx)
+{
+	if (this->size > 0) {
+		this->ptr = (T*)&(vec[idx]);
+		idx += this->size;
+	}
+}
 
 

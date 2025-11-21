@@ -1,8 +1,6 @@
 #include "iostream"
-#include "utils/rand_int.hpp"
-#include "utils/stl_print.hpp"
 #include "instance.hpp"
-#include "graph.hpp"
+#include "tree.hpp"
 
 
 using namespace std;
@@ -18,15 +16,9 @@ int main(int argc, char const *argv[])
 	cout << file_name << endl;
 
 	Instance inst(file_name);
-	Graph graph(inst);
+	Tree tree(inst);
 
-	vector<int> order;
-	vector<int> time;
-	vector<int> prev_op;
-
-	graph.get_order(order, time, prev_op);
-
-	cout << order << endl;
+	tree.solve();
 
 	return 0;
 }

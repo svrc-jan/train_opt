@@ -6,6 +6,7 @@
 
 using namespace std;
 
+
 struct Disjoint_set {
 
 	int n_items;
@@ -14,7 +15,9 @@ struct Disjoint_set {
 	vector<int> parent = {};
 	vector<int> size = {};
 
-	Disjoint_set(int n_items) {
+
+	Disjoint_set(int n_items)
+	{
 		this->n_items = n_items;
 		this->n_sets = n_items;
 
@@ -27,7 +30,9 @@ struct Disjoint_set {
 		}
 	}
 
-	int find_set(int v) {
+
+	int find_set(int v)
+	{
 		while (v != this->parent[v]) {
 			this->parent[v] = this->parent[this->parent[v]];
 			v = this->parent[v];
@@ -36,7 +41,9 @@ struct Disjoint_set {
 		return v;
 	}
 
-	void union_set(int a, int b) {
+
+	void union_set(int a, int b)
+	{
 		a = find_set(a);
 		b = find_set(b);
 		if (a != b) {
@@ -51,31 +58,25 @@ struct Disjoint_set {
 		}
 	}
 
-	pair<vector<int>, vector<int>> get_sets()
+
+	vector<int> get_result()
 	{
-		vector<int> sets_size;
-		sets_size.reserve(this->n_sets);
+		vector<int> set_idx(this->n_items);
+
 		map<int, int> idx_map;
-		
-		int idx = 0;
 
 		for (int i = 0; i < this->n_items; i++) {
 			if (i == this->parent[i]) {
-				idx_map[i] = idx;
-				sets_size.push_back(this->size[i]);
-				
-				idx += this->size[i];
+				idx_map[i] = idx_map.size();
 			}
 		}
 
-		vector<int> sets_item(this->n_items);
 		for (int i = 0; i < n_items; i++) {
-			int& idx = idx_map[this->find_set(i)];
-			sets_item[idx++] = i;
+			set_idx[i] = idx_map[this->find_set(i)];
 		}
 
-		return {sets_size, sets_item};
+		assert((int)idx_map.size() == this->n_sets);
+
+		return set_idx;
 	}
-
-
 };
