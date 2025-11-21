@@ -10,7 +10,6 @@ Base_data::Base_data(const string& file_name)
 	this->prepare(inst_jsn);
 	this->parse(inst_jsn);
 	this->assign_arrays();
-	this->assign_prev_ops();
 }
 
 
@@ -107,32 +106,6 @@ void Base_data::assign_arrays()
 	assert(ops_idx == this->n_ops());
 	assert(op_succ_idx == this->n_op_succ());
 	assert(op_res_idx == this->n_op_res());
-}
-
-
-void Base_data::assign_prev_ops()
-{
-	this->op_prev.resize(this->n_op_succ());
-
-	for (const Base_op& op : this->ops) {
-		for (int s : op.succ) {
-			this->ops[s].prev.size += 1;
-		}
-	}
-
-	int idx = 0;
-	for (Base_op& op : this->ops) {
-		op.prev.assign_ptr(this->op_prev, idx);
-	}
-	assert(idx == this->n_op_prev());
-
-
-	vector<int> prev_filled(this->n_ops(), 0);
-	for (int o = 0; o < this->n_ops(); o++) {
-		for (int s : this->ops[o].succ) {
-			this->ops[s].prev[prev_filled[s]++] = o;
-		}
-	}
 }
 
 

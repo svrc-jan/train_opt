@@ -42,27 +42,23 @@ class Base_data
 {
 public:
 	vector<Base_train> trains = {};
-	vector<Base_op> ops = {};
-
 	Base_data(const string& file_name);
 
 	inline int n_trains() const { return this->trains.size(); }
 	inline int n_ops() const { return this->ops.size(); }
 	inline int n_res() const { return this->res_name_to_idx.size(); }
 	inline int n_op_succ() const { return this->op_succ.size(); }
-	inline int n_op_prev() const { return this->op_prev.size(); }
 	inline int n_op_res() const { return this->op_res.size(); }
 
 private:
+	vector<Base_op> ops = {};
 	vector<int> op_succ = {};
-	vector<int> op_prev = {};
 	vector<Base_res> op_res = {};
 	map<string, int> res_name_to_idx = {};
 
 	void prepare(json inst_jsn);
 	void parse(json inst_jsn);
 	void assign_arrays();
-	void assign_prev_ops();
 
 	void add_res_name(string res_name);
 };

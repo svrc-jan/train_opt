@@ -8,10 +8,17 @@
 
 using namespace std;
 
-struct Res_cons
+struct Op_time
 {
-	int node = -1;
+	int op = -1;
 	int time = -1;
+};
+
+
+struct Res_col
+{
+	Op_time first = {-1, -1};
+	Op_time second = {-1, -1};
 };
 
 class Graph
@@ -19,14 +26,13 @@ class Graph
 public:
 	Graph(const Instance& inst);
 
-	bool get_order(vector<int>& order, vector<int>& time, vector<int>& op_in);
-
-	void add_res_cons(int from, int to, int time);
+	bool get_col(Res_col& col);
 
 private:
 	const Instance& inst;
 
-	vector<vector<Res_cons>> res_cons = {};
+	vector<int> path = {};
+	vector<vector<Op_time>> res_cons = {};
 	vector<int> n_in_res_cons = {};
 };
 
