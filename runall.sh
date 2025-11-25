@@ -1,4 +1,4 @@
-app="build/tree_test"
+app="build/instance_test"
 
 for file in data/*.json
 do

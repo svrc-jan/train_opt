@@ -20,8 +20,23 @@ int main(int argc, char const *argv[])
 	cout << file_name << endl;
 	Instance inst(file_name);
 
-	cout << "levels: " << inst.n_levels() << endl;
-	cout << "ops:    " << inst.n_ops() << endl;
+	for (Op& op : inst.ops) {
+		for (Res& res : op.res) {
+			bool res_found = false;
+			bool res_missing = false;
+
+			for (int s : op.succ) {
+				if (inst.ops[s].res.find_sorted(res.idx) == -1) {
+					res_missing = true;
+				}
+				else {
+					res_found = true;
+				}
+			}
+
+			assert(!(res_found && res_missing));
+		}
+	}
 
 
 	return 0;

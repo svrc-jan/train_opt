@@ -1,53 +1,87 @@
 #include "instance.hpp"
 
-#include <unordered_set>
-#include <queue>
-#include <algorithm>
-#include <iostream>
-
 #include "utils/files.hpp"
-#include "utils/disjoint_set.hpp"
 
 
-Instance::Instance(string file_name)
+Instance::Instance(const string& file_name) 
 {
-	Base_data data(file_name);
+	json inst_jsn = get_json_file(file_name);
 
-	this->n_res = data.n_res();
-	this->add_ops(data);
-	this->add_levels(data);
+	this->prepare(inst_jsn);
+	this->parse(inst_jsn);
+	this->assign_arrays();
+	this->assign_prev_ops();
 }
 
 
-void Instance::add_ops(const Base_data& data)
+void Instance::prepare(json inst_jsn)
 {
+	int ops_size = 0;
+	int trains_size = 0;
+	int succ_size = 0;
+	int res_size = 0;
 
-	this->trains.reserve(data.n_trains());
-	this->ops.reserve(data.n_ops());
-	this->op_res.reserve(data.n_op_res());
+	for (const json& train_jsn : inst_jsn["trains"]) {
+		trains_size++;
 
-	for (auto& base_train : data.trains) {
+		for (const json& op_jsn : train_jsn) {
+			ops_size++;
+
+			succ_size += op_jsn["successors"].size();
+			if (op_jsn.contains("resources")) {
+				res_size += op_jsn["resources"].size();
+				for (const auto& res_jsn : op_jsn["resources"]) {
+					this->add_res_name(res_jsn["resource"]);
+				}
+			}
+		}
+	}
+
+	this->ops.reserve(ops_size);
+	this->trains.reserve(trains_size);
+	this->op_succ.reserve(succ_size);
+	this->op_res.reserve(res_size);
+}
+
+
+void Instance::parse(json inst_jsn)
+{
+	for (const json& train_jsn : inst_jsn["trains"]) {
 		Train train;
-
 		train.op_begin = this->n_ops();
 
-		for (int i = 0; i < base_train.ops.size; i++) {
-			const Base_op& base_op = base_train.ops[i];
+		for (const json& op_jsn : train_jsn) {
+			Op op;
+			
+			op.train = this->n_trains();
 
-			Op op = {
-				.dur = base_op.dur,
-				.start_lb = base_op.start_lb,
-				.start_ub = base_op.start_ub,
-			};
+			op.dur = op_jsn["min_duration"];
+			
+			if (op_jsn.contains("start_lb")) {
+				op.start_lb = op_jsn["start_lb"];
+			}
 
-			for (auto& base_res : base_op.res) {
-				Res res = {
-					.idx = base_res.idx,
-					.time = base_res.time
-				};
+			if (op_jsn.contains("start_ub")) {
+				op.start_ub = op_jsn["start_ub"];
+			}
 
-				op.res.size += 1;
-				this->op_res.push_back(res);
+			for (int s : op_jsn["successors"]) {
+				op.succ.size += 1;
+				this->op_succ.push_back(s + train.op_begin);
+			}
+
+			if (op_jsn.contains("resources")) {
+				for (const auto& res_jsn : op_jsn["resources"]) {
+					Res res;
+
+					res.idx = this->res_name_to_idx[res_jsn["resource"]];
+					if (res_jsn.contains("release_time")) {
+						res.time = res_jsn["release_time"];
+					}
+
+					op.res.size += 1;
+					this->op_res.push_back(res);
+				}
 			}
 
 			train.ops.size += 1;
@@ -56,131 +90,59 @@ void Instance::add_ops(const Base_data& data)
 
 		this->trains.push_back(train);
 	}
+}
 
+void Instance::assign_arrays()
+{
 	int ops_idx = 0;
+	int op_succ_idx = 0;
 	int op_res_idx = 0;
 
 	for (Train& train : this->trains) {
+		assert(train.op_begin == ops_idx);
 		train.ops.assign_ptr(this->ops, ops_idx);
 
 		for (Op& op : train.ops) {
+			op.succ.assign_ptr(this->op_succ, op_succ_idx);
 			op.res.assign_ptr(this->op_res, op_res_idx);
 		}
 	}
-	
+
+	assert(ops_idx == this->n_ops());
+	assert(op_succ_idx == this->n_op_succ());
+	assert(op_res_idx == this->n_op_res());
 }
 
 
-void Instance::add_levels(const Base_data& data)
+void Instance::assign_prev_ops()
 {
-	vector<vector<int>> set_idx(this->n_trains());
-	
-	for (int t = 0; t < this->n_trains(); t++) {
-		auto& base_train = data.trains[t];
-		Train& train = this->trains[t];
-
-		Disjoint_set disj_set(train.n_ops());
-
-		for (auto& base_op : base_train.ops) {
-			for (int i = 0; i < base_op.succ.size; i++) {
-				for (int j = i + 1; j < base_op.succ.size; j++) {
-					disj_set.union_set(base_op.succ[i], base_op.succ[j]);
-				}
-			}
-		}
-
-		train.levels.size = disj_set.n_sets + 1;
-
-		set_idx[t] = disj_set.get_result();
-	}
-
-	int level_idx = 0;
-
-	for (int t = 0; t < this->n_trains(); t++) {
-		auto& base_train = data.trains[t];
-		Train& train = this->trains[t];
-	
-		train.level_begin = level_idx;
-		level_idx += train.levels.size;
-
-		for (int i = 0; i < train.n_ops(); i++) {
-			train.ops[i].level_start = set_idx[t][i] + train.level_begin;
-		}
-	}
-
-	for (int t = 0; t < this->n_trains(); t++) {
-		auto& base_train = data.trains[t];
-		Train& train = this->trains[t];
-
-		for (int i = 0; i < train.n_ops(); i++) {
-			auto& base_op = base_train.ops[i];
-			Op& op = train.ops[i];
-
-			if (base_op.succ.size > 0) {
-				Op& succ = train.ops[base_op.succ[0]];
-
-				op.level_end = succ.level_start;
-			}
-			else {
-				op.level_end = train.level_last();
-			}
-		}
-	}
-
-	this->levels.resize(level_idx, Level());
-
-	for (int t = 0; t < this->n_trains(); t++) {
-		Train& train = this->trains[t];
-
-		train.levels.ptr = &(this->levels[train.level_begin]);
-
-		for (Level& level : train.levels) {
-			level.train = t;
-		}
-	}
-
-	for (int t = 0; t < this->n_trains(); t++) {
-		auto& base_train = data.trains[t];
-		const Train& train = this->trains[t];
-	
-		for (int i = 0; i < train.n_ops(); i++) {
-			auto& base_op = base_train.ops[i];
-			const Op& op = train.ops[i];
-
-			assert(op.level_start != -1 && op.level_end != -1);
-
-			for (int j : base_op.succ) {
-				const Op& succ = train.ops[j];
-				assert(op.level_end == succ.level_start);
-			}	
-		}
-
-		assert(train.ops[0].level_start == train.level_begin);
-		assert(train.ops.back().level_end == train.level_last());
-	}
-	
-	this->level_ops_in.resize(this->n_ops());
-	this->level_ops_out.resize(this->n_ops());
+	this->op_prev.resize(this->n_op_succ());
 
 	for (const Op& op : this->ops) {
-		this->levels[op.level_end].ops_in.size += 1;
-		this->levels[op.level_start].ops_out.size += 1;
+		for (int s : op.succ) {
+			this->ops[s].prev.size += 1;
+		}
 	}
 
-	int ops_in_idx = 0;
-	int ops_out_idx = 0;
-
-	for (Level& level : this->levels) {
-		level.ops_in.assign_ptr(this->level_ops_in, ops_in_idx);
-		level.ops_out.assign_ptr(this->level_ops_out, ops_out_idx);
+	int idx = 0;
+	for (Op& op : this->ops) {
+		op.prev.assign_ptr(this->op_prev, idx);
 	}
+	assert(idx == this->n_op_prev());
 
-	vector<int> ops_in_filled(this->n_levels(), 0);
-	vector<int> ops_out_filled(this->n_levels(), 0);
 
+	vector<int> prev_filled(this->n_ops(), 0);
 	for (int o = 0; o < this->n_ops(); o++) {
-		const Op& op = this->ops[o];
-		this->levels[op.level_end].ops_in[ops_in_filled[op.level_end]++] = o;
-		this->levels[op.level_start].ops_out[ops_out_filled[op.level_start]++] = o;
+		for (int s : this->ops[o].succ) {
+			this->ops[s].prev[prev_filled[s]++] = o;
+		}
+	}
+}
+
+
+void Instance::add_res_name(string res_name)
+{
+	if (this->res_name_to_idx.find(res_name) != this->res_name_to_idx.end()) {
+		this->res_name_to_idx[res_name] = this->n_res();
 	}
 }

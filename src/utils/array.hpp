@@ -22,8 +22,11 @@ struct Array
 	void sort() { std::sort(this->begin(), this->end()); }
 	bool is_asc() const;
 
-	int find(const T& x) const;
-	int find_sorted(const T& x) const;
+	template<typename X>
+	int find(const X& x) const;
+
+	template<typename X>
+	int find_sorted(const X& x) const;
 
 	void assign_ptr(const std::vector<T>& vec, int& idx);
 };
@@ -41,11 +44,13 @@ bool Array<T>::is_asc() const
 	return true;
 }
 
+
 template<typename T>
-int Array<T>::find(const T& x) const
+template<typename X>
+int Array<T>::find(const X& x) const
 {
 	for (int i = 0; i < this->size; i++) {
-		if (x == this->ptr[i]) {
+		if (this->ptr[i] == x) {
 			return i;
 		}
 	}
@@ -53,8 +58,10 @@ int Array<T>::find(const T& x) const
 	return -1;
 }
 
+
 template<typename T>
-int Array<T>::find_sorted(const T& x) const
+template<typename X>
+int Array<T>::find_sorted(const X& x) const
 {
 	if (this->size == 0) {
 		return -1;
@@ -66,15 +73,15 @@ int Array<T>::find_sorted(const T& x) const
 	while (l <= r) {
 		int m = l + (r - l)/2;
 
-		if (x == this->ptr[m]) {
+		if (this->ptr[m] == x) {
 			return m;
 		}
 
-		if (x < this->ptr[m]) {
-			r = m - 1;
+		if (this->ptr[m] < x) {
+			l = m + 1;
 		}
 		else {
-			l = m + 1;
+			r = m - 1;
 		}
 	}
 
