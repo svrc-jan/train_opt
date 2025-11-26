@@ -30,13 +30,6 @@ Graph::Graph(const Instance& inst) : inst(inst)
 }
 
 
-enum Node_state {
-	PREV_WAIT, // wait for any previous node
-	PATH_WAIT, // wait for path node
-	STARTED,   // op is s
-};
-
-
 void Graph::make_chrono_order()
 {	
 	Order_prio_queue pq;
@@ -44,7 +37,7 @@ void Graph::make_chrono_order()
 	this->op_chrono.set_size(this->inst.n_ops());
 	this->res_chrono.set_size(this->inst.n_res());
 
-	vector<int> state(this->inst.n_ops(), PREV_WAIT);
+	vector<int> visited(this->inst.n_ops(), false);
 
 	for (auto& train : this->inst.trains) {
 		int o = train.op_start;
@@ -63,11 +56,11 @@ void Graph::make_chrono_order()
 
 		int o = curr.node_out;
 		
-		if (state[o] >= STARTED) {
+		if (visited[o]) {
 			continue;
 		}
 
-		state[o] = STARTED;
+		visited[o] = true;
 		this->op_chrono.add(o);
 
 		int t = curr.time;
@@ -78,7 +71,7 @@ void Graph::make_chrono_order()
 		}
 
 		for (int s : op.succ) {
-			if (state[s] > PATH_WAIT) {
+			if (visited[s]) {
 				continue;
 			}
 
@@ -159,12 +152,25 @@ void Graph::make_op_data()
 	}
 }
 
+enum Node_state_enum {
+	PREV_WAIT, // wait for any previous node
+	PATH_WAIT, // wait for path node
+	RES_WAIT,  // wait for res
+	STARTED,   // op is started
+	ENDED,     // op has ended
+};
+
+enum Node_prev_enum {
+	DEFAULT_PREV = -1,
+	START_PREV = -2,
+	RES_PREV = -3
+};
 
 bool Graph::make_order(vector<int>& order, vector<int>& start_time, vector<int>& node_prev)
 {
 	order.clear();
 	for (int n = 0; n < this->n_nodes; n++) {
-		node_prev[n] = -1;
+		node_prev[n] = DEFAULT_PREV;
 	}
 
 	vector<int> state(this->inst.n_ops());
@@ -179,14 +185,20 @@ bool Graph::make_order(vector<int>& order, vector<int>& start_time, vector<int>&
 		}
 	}
 
+	vector<int> n_res_cons_done(this->inst.n_ops());
+	for (int n = 0; n < this->n_nodes; n++) {
+		n_res_cons_done[n] = 0;
+	}
+
 	Order_prio_queue pq;
 
 	for (int n : this->train_start_nodes) {
 
+		state[n] = PATH_WAIT;
 		const Node& node = this->nodes[n];
 
 		pq.push({
-			.node_in = -2,
+			.node_in = START_PREV,
 			.node_out = n,
 			.time = node.start_lb
 		});
@@ -196,18 +208,50 @@ bool Graph::make_order(vector<int>& order, vector<int>& start_time, vector<int>&
 		auto curr = pq.top(); pq.pop();
 
 		int n = curr.node_out;
-		
-		if (state[n] >= STARTED) {
+		const auto& node = this->nodes[n];
+
+		if (state[n] < RES_WAIT && (curr.node_in >= 0 || curr.node_in == START_PREV)) {
+			node_prev[n] = curr.node_in;
+			state[n] = RES_WAIT;
+		}
+
+		if (curr.node_in == RES_PREV) {
+			n_res_cons_done[n] += 1;
+		}
+
+		if (state[n] != RES_WAIT || n_res_cons_done[n] < node.n_in_res_cons) {
 			continue;
+		}
+
+		int t = curr.time;
+
+		int n_prev = node_prev[n];
+		if (n_prev >= 0 && state[n_prev] == STARTED) {
+			state[n_prev] = ENDED;
+
+			int res_cons_idx = this->node_res_cons_idx[n_prev];
+			while (res_cons_idx >= 0) {
+				Res_cons& rc = this->res_cons[res_cons_idx];
+				pq.push({
+					.node_in = RES_PREV,
+					.node_out = rc.node,
+					.time = t + rc.time
+				});
+
+				res_cons_idx = rc.next_idx;
+			}
 		}
 
 		state[n] = STARTED;
 
 		int t = curr.time;
-		const auto& node = this->nodes[n];
-
 		if (t > node.start_ub) {
 			return false;
+		}
+
+		int n_in = node_prev[n];
+		if (n_in >= 0) {
+
 		}
 		
 		order.push_back(n);
@@ -241,8 +285,6 @@ bool Graph::make_order(vector<int>& order, vector<int>& start_time, vector<int>&
 					continue;
 				}
 
-				node_prev[s] = n;
-
 				auto& succ_node = this->nodes[s];
 
 				pq.push({
@@ -270,4 +312,20 @@ void Graph::add_path(int node, const vector<int>& node_prev)
 	}
 	
 	assert(prev < 0 || this->nodes[prev].path == curr);
+}
+
+
+void Graph::add_res_cons(int node_from, int node_to, int time)
+{
+	int res_cons_idx = this->node_res_cons_idx[node_from];
+	if (res_cons_idx == -1) {
+
+	}
+	else {
+		
+	}
+	while (res_cons_idx > 0 && this->res_cons[res_cons_idx] > 0) {
+		/* code */
+	}
+	
 }

@@ -14,6 +14,7 @@ struct Path_step
 
 Tree::Tree(const Instance& inst) : inst(inst), graph(Graph(inst))
 {
+	
 }
 
 
