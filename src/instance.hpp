@@ -36,6 +36,7 @@ struct Op
 	int start_lb = 0;
 	int start_ub = MAX_INT;
 
+
 	Array<int> succ = {nullptr, 0};
 	Array<int> prev = {nullptr, 0};
 	Array<Res> res = {nullptr, 0};
@@ -43,8 +44,10 @@ struct Op
 
 struct Train
 {
-	int op_begin = -1;
+	int op_start = -1;
 	Array<Op> ops = {nullptr, 0};
+
+	inline int op_last() const { return this->op_start + this->ops.size - 1; }
 };
 
 

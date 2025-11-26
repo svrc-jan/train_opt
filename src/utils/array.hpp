@@ -9,6 +9,8 @@ struct Array
 	T* ptr = nullptr;
 	int size = 0;
 
+	inline void push_back(const T& x) { this->ptr[this->size++] = x; }
+
 	inline T* begin() { return this->ptr; }
 	inline T* end() { return this->ptr + this->size; }
 	inline T& back() { return this->ptr[this->size - 1]; }

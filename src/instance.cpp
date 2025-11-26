@@ -48,7 +48,7 @@ void Instance::parse(json inst_jsn)
 {
 	for (const json& train_jsn : inst_jsn["trains"]) {
 		Train train;
-		train.op_begin = this->n_ops();
+		train.op_start = this->n_ops();
 
 		for (const json& op_jsn : train_jsn) {
 			Op op;
@@ -67,7 +67,7 @@ void Instance::parse(json inst_jsn)
 
 			for (int s : op_jsn["successors"]) {
 				op.succ.size += 1;
-				this->op_succ.push_back(s + train.op_begin);
+				this->op_succ.push_back(s + train.op_start);
 			}
 
 			if (op_jsn.contains("resources")) {
@@ -99,7 +99,7 @@ void Instance::assign_arrays()
 	int op_res_idx = 0;
 
 	for (Train& train : this->trains) {
-		assert(train.op_begin == ops_idx);
+		assert(train.op_start == ops_idx);
 		train.ops.assign_ptr(this->ops, ops_idx);
 
 		for (Op& op : train.ops) {
@@ -140,9 +140,10 @@ void Instance::assign_prev_ops()
 }
 
 
+
 void Instance::add_res_name(string res_name)
 {
-	if (this->res_name_to_idx.find(res_name) != this->res_name_to_idx.end()) {
+	if (this->res_name_to_idx.find(res_name) == this->res_name_to_idx.end()) {
 		this->res_name_to_idx[res_name] = this->n_res();
 	}
 }

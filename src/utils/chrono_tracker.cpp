@@ -13,13 +13,17 @@ void Chrono_tracker::set_size(int size)
 	this->size = size;
 	this->order.reserve(size);
 	this->idx.resize(size);
+
+	this->reset();
 }
 
 
 void Chrono_tracker::reset()
 {
 	this->order.clear();
-	memset(this->idx.data(), -1, sizeof(int)*this->size);
+	for (int i = 0; i < this->size; i++) {
+		this->idx[i] = -1;
+	}
 }
 
 

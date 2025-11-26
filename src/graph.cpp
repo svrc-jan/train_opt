@@ -6,8 +6,9 @@
 
 struct Order_item
 {
-	int op;
-	int time;
+	int node_in = -1;
+	int node_out = -1;
+	int time = 0;
 };
 
 
@@ -25,7 +26,15 @@ using Order_prio_queue = priority_queue<Order_item, vector<Order_item>, Order_co
 Graph::Graph(const Instance& inst) : inst(inst)
 {
 	this->make_chrono_order();
+	this->make_op_data();
 }
+
+
+enum Node_state {
+	PREV_WAIT, // wait for any previous node
+	PATH_WAIT, // wait for path node
+	STARTED,   // op is s
+};
 
 
 void Graph::make_chrono_order()
@@ -35,30 +44,51 @@ void Graph::make_chrono_order()
 	this->op_chrono.set_size(this->inst.n_ops());
 	this->res_chrono.set_size(this->inst.n_res());
 
+	vector<int> state(this->inst.n_ops(), PREV_WAIT);
+
 	for (auto& train : this->inst.trains) {
-		auto& start_op = train.ops[0];
+		int o = train.op_start;
+
+		auto& start_op = inst.ops[o];
 
 		pq.push({
-			.op = train.op_begin,
-			.time = start_op.start_lb + start_op.dur
+			.node_in = -1,
+			.node_out = o,
+			.time = start_op.start_lb
 		});
 	}
 	
 	while (!pq.empty()) {
 		auto curr = pq.top(); pq.pop();
-		if (this->op_chrono.add(curr.op)) {
-			for (int s : this->inst.ops[curr.op].succ) {
-				auto& succ_op = this->inst.ops[s];
 
-				for (auto& res : succ_op.res) {
-					this->res_chrono.add(res.idx);
-				}
+		int o = curr.node_out;
+		
+		if (state[o] >= STARTED) {
+			continue;
+		}
 
-				pq.push({
-					.op = s,
-					.time = max(curr.time, succ_op.start_lb) + succ_op.dur
-				});
+		state[o] = STARTED;
+		this->op_chrono.add(o);
+
+		int t = curr.time;
+		auto& op = this->inst.ops[o];
+
+		for (auto& res : op.res) {
+			this->res_chrono.add(res.idx);
+		}
+
+		for (int s : op.succ) {
+			if (state[s] > PATH_WAIT) {
+				continue;
 			}
+
+			auto& succ = this->inst.ops[s];
+			
+			pq.push({
+				.node_in = o,
+				.node_out = s,
+				.time = max(succ.start_lb, t + op.dur) 
+			});
 		}
 	}
 
@@ -68,7 +98,176 @@ void Graph::make_chrono_order()
 
 void Graph::make_op_data()
 {
-	for (int o : this->op_chrono.order) {
+	this->n_nodes = this->inst.n_ops();
 
+	this->nodes.reserve(this->n_nodes);
+	this->node_train.reserve(this->n_nodes);
+	
+	this->_node_succ.reserve(this->inst.n_op_succ());
+	this->_node_res.reserve(this->inst.n_op_res());
+
+	for (int o : this->op_chrono.order) {
+		const Op& op = this->inst.ops[o];
+
+		Node node = {
+			.path = -1,
+			.dur = op.dur,
+			.start_lb = op.start_lb,
+			.start_ub = op.start_ub
+		};
+
+		for (int s : op.succ) {
+			node.succ.size += 1;
+			this->_node_succ.push_back(this->op_chrono.idx[s]);
+		}
+
+		for (const Res& res : op.res) {
+			node.res.size += 1;
+			this->_node_res.push_back({
+				.idx = this->res_chrono.idx[res.idx],
+				.time = res.time
+			});
+		}
+
+		this->nodes.push_back(node);
+		this->node_train.push_back(op.train);
 	}
+
+	int node_succ_idx = 0;
+	int node_res_idx = 0;
+
+	for (Node& node : this->nodes) {
+		node.succ.assign_ptr(this->_node_succ, node_succ_idx);
+		node.res.assign_ptr(this->_node_res, node_res_idx);
+
+		node.succ.sort();
+		node.res.sort();
+	}
+
+	this->node_valid.resize(this->n_nodes);
+	for (int n = 0; n < this->n_nodes; n++) {
+		this->node_valid[n] = true;
+	}
+
+
+	this->train_start_nodes.reserve(this->inst.n_trains());
+	this->train_last_nodes.reserve(this->inst.n_trains());
+
+	for (const Train& train : this->inst.trains) {
+		train_start_nodes.push_back(this->op_chrono.idx[train.op_start]);
+		train_last_nodes.push_back(this->op_chrono.idx[train.op_last()]);
+	}
+}
+
+
+bool Graph::make_order(vector<int>& order, vector<int>& start_time, vector<int>& node_prev)
+{
+	order.clear();
+	for (int n = 0; n < this->n_nodes; n++) {
+		node_prev[n] = -1;
+	}
+
+	vector<int> state(this->inst.n_ops());
+	for (int n = 0; n < this->n_nodes; n++) {
+		state[n] = PREV_WAIT;
+	}
+
+	for (int n = 0; n < this->n_nodes; n++) {
+		int p = this->nodes[n].path;
+		if (p >= 0) {
+			state[p] = PATH_WAIT;
+		}
+	}
+
+	Order_prio_queue pq;
+
+	for (int n : this->train_start_nodes) {
+
+		const Node& node = this->nodes[n];
+
+		pq.push({
+			.node_in = -2,
+			.node_out = n,
+			.time = node.start_lb
+		});
+	}
+
+	while (!pq.empty()) {
+		auto curr = pq.top(); pq.pop();
+
+		int n = curr.node_out;
+		
+		if (state[n] >= STARTED) {
+			continue;
+		}
+
+		state[n] = STARTED;
+
+		int t = curr.time;
+		const auto& node = this->nodes[n];
+
+		if (t > node.start_ub) {
+			return false;
+		}
+		
+		order.push_back(n);
+		node_prev[n] = curr.node_in;
+		start_time[n] = t;
+		
+
+		int p = node.path;
+		if (p >= 0) {
+			if (!this->node_valid[p]) {
+				return false;
+			}
+
+			node_prev[p] = n;
+			
+			auto& path_node = this->nodes[p];
+			if (path_node.start_ub < t + node.dur) {
+				return false;
+			}
+
+			pq.push({
+				.node_in = n,
+				.node_out = p,
+				.time = max(path_node.start_lb, t + node.dur) 
+			});
+		}
+
+		else {
+			for (int s : this->nodes[n].succ) {
+				if (!this->node_valid[s] || state[s] > PREV_WAIT) {
+					continue;
+				}
+
+				node_prev[s] = n;
+
+				auto& succ_node = this->nodes[s];
+
+				pq.push({
+					.node_in = n,
+					.node_out = s,
+					.time = max(succ_node.start_lb, t + node.dur) 
+				});
+			}
+		}		
+	}
+
+	return true;
+}
+
+
+void Graph::add_path(int node, const vector<int>& node_prev)
+{
+	int curr = node;
+	int prev = node_prev[curr];
+	while (prev >= 0 && this->nodes[prev].path == -1) {
+		this->nodes[prev].path = curr;
+
+		curr = prev;
+		prev = node_prev[curr];
+	}
+	
+	assert(prev < 0 || this->nodes[prev].path == curr);
 }
