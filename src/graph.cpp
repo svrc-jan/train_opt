@@ -1,5 +1,6 @@
 #include "graph.hpp"
 
+#include <iostream>
 #include <algorithm>
 #include <queue>
 
@@ -103,7 +104,6 @@ void Graph::make_op_data()
 		const Op& op = this->inst.ops[o];
 
 		Node node = {
-			.path = -1,
 			.dur = op.dur,
 			.start_lb = op.start_lb,
 			.start_ub = op.start_ub
@@ -142,6 +142,15 @@ void Graph::make_op_data()
 		this->node_valid[n] = true;
 	}
 
+	this->node_path.resize(this->n_nodes);
+	for (int n = 0; n < this->n_nodes; n++) {
+		this->node_path[n] = -1;
+	}
+
+	this->node_res_cons_idx.resize(this->n_nodes);
+	for (int n = 0; n < this->n_nodes; n++) {
+		this->node_res_cons_idx[n] = -1;
+	}
 
 	this->train_start_nodes.reserve(this->inst.n_trains());
 	this->train_last_nodes.reserve(this->inst.n_trains());
@@ -179,7 +188,7 @@ bool Graph::make_order(vector<int>& order, vector<int>& start_time, vector<int>&
 	}
 
 	for (int n = 0; n < this->n_nodes; n++) {
-		int p = this->nodes[n].path;
+		int p = this->node_path[n];
 		if (p >= 0) {
 			state[p] = PATH_WAIT;
 		}
@@ -244,22 +253,14 @@ bool Graph::make_order(vector<int>& order, vector<int>& start_time, vector<int>&
 
 		state[n] = STARTED;
 
-		int t = curr.time;
 		if (t > node.start_ub) {
 			return false;
 		}
-
-		int n_in = node_prev[n];
-		if (n_in >= 0) {
-
-		}
 		
 		order.push_back(n);
-		node_prev[n] = curr.node_in;
 		start_time[n] = t;
-		
 
-		int p = node.path;
+		int p = this->node_path[n];
 		if (p >= 0) {
 			if (!this->node_valid[p]) {
 				return false;
@@ -300,32 +301,75 @@ bool Graph::make_order(vector<int>& order, vector<int>& start_time, vector<int>&
 }
 
 
-void Graph::add_path(int node, const vector<int>& node_prev)
+pair<int, int> Graph::add_path(int node, const vector<int>& node_prev)
 {
 	int curr = node;
 	int prev = node_prev[curr];
-	while (prev >= 0 && this->nodes[prev].path == -1) {
-		this->nodes[prev].path = curr;
+	while (prev >= 0 && this->node_path[prev] == -1) {
+		this->node_path[prev] = curr;
 
 		curr = prev;
 		prev = node_prev[curr];
 	}
 	
-	assert(prev < 0 || this->nodes[prev].path == curr);
+	assert(prev < 0 || this->node_path[prev] == curr);
+	// this->print_train_path(this->node_train[node]);
+
+	return {curr, node};
 }
 
 
-void Graph::add_res_cons(int node_from, int node_to, int time)
+int Graph::add_res_cons(int node_from, int node_to, int res)
 {
 	int res_cons_idx = this->node_res_cons_idx[node_from];
 	if (res_cons_idx == -1) {
-
+		this->node_res_cons_idx[node_from] = this->res_cons.size();
 	}
 	else {
-		
+		while (this->res_cons[res_cons_idx].next_idx >= 0) {
+			res_cons_idx = this->res_cons[res_cons_idx].next_idx;
+		}	
+		this->res_cons[res_cons_idx].next_idx = this->res_cons.size();
 	}
-	while (res_cons_idx > 0 && this->res_cons[res_cons_idx] > 0) {
-		/* code */
-	}
+
+	const auto& res_arr = this->nodes[node_from].res;
+	int time = res_arr[res_arr.find_sorted(res)].time;
+
+	this->res_cons.push_back({
+		.node = node_to,
+		.time = time,
+		.next_idx = -1
+	});
 	
+	this->nodes[node_to].n_in_res_cons += 1;
+	
+	return res_cons_idx;
+}
+
+
+void Graph::remove_last_res_cons(int node_from, int node_to, int res_cons_idx)
+{
+	this->res_cons.pop_back();
+	if (res_cons_idx == -1) {
+		this->node_res_cons_idx[node_from] = -1;
+	}
+	else {
+		this->res_cons[res_cons_idx].next_idx = -1;
+	}
+
+	this->nodes[node_to].n_in_res_cons -= 1;
+}
+
+
+void Graph::print_train_path(int train)
+{
+	cout << "train " << train << " path:";
+	int curr = this->train_start_nodes[train];
+
+	while (curr >= 0) {
+		cout << " " << curr;
+		curr = this->node_path[curr];
+	}
+
+	cout << endl;
 }

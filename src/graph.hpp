@@ -19,7 +19,6 @@ struct Res_cons
 
 struct Node
 {
-	int path = -1;
 	int dur = 0;
 	int start_lb = 0;
 	int start_ub = MAX_INT;
@@ -40,17 +39,22 @@ public:
 	vector<int> node_train = {};
 	vector<int> node_valid = {};
 
-	vector<int> train_start_nodes = {};
-	vector<int> train_last_nodes = {};
-
+	vector<int> node_path = {};
 	vector<int> node_res_cons_idx = {};
 	vector<Res_cons> res_cons = {};
+
+	vector<int> train_start_nodes = {};
+	vector<int> train_last_nodes = {};
 
 	Graph(const Instance& inst);
 
 	bool make_order(vector<int>& order, vector<int>& start_time, vector<int>& node_prev);
-	void add_path(int node, const vector<int>& node_prev);
-	void add_res_cons(int node_from, int node_to, int time);
+	
+	pair<int, int> add_path(int node, const vector<int>& node_prev);
+	int add_res_cons(int node_from, int node_to, int time);
+	void remove_last_res_cons(int node_from, int node_to, int res_cons_idx);
+
+	void print_train_path(int train);
 
 private:
 	const Instance& inst;

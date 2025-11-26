@@ -1,8 +1,7 @@
 #include "tree.hpp"
 
 #include <queue>
-
-#include "iostream"
+#include <iostream>
 
 struct Path_step
 {
@@ -14,63 +13,62 @@ struct Path_step
 
 Tree::Tree(const Instance& inst) : inst(inst), graph(Graph(inst))
 {
-	
+	this->order.reserve(this->graph.n_nodes);
+	this->start_time.resize(this->graph.n_nodes);
+	this->node_prev.resize(this->graph.n_nodes);
+	this->node_succ.resize(this->graph.n_nodes);
 }
 
 
 bool Tree::solve()
 {
-	vector<int> order;
-	vector<int> start_time;
-	vector<int> node_prev;
-	vector<int> node_succ;
-
-	vector<pair<int, int>> path_order;
-
-	order.reserve(this->graph.n_nodes);
-	start_time.resize(this->graph.n_nodes);
-	node_prev.resize(this->graph.n_nodes);
-	node_succ.resize(this->graph.n_nodes);
-
 	Res_col res_col;
 
-	int it = 0;
-	while (true) {
-		it += 1;
-
-		if (!this->graph.make_order(order, start_time, node_prev)) {
-			cout << "it " << it << ", make_order failed" << endl;
+	if (!this->graph.make_order(this->order, this->start_time, this->node_prev)) {
 			return false;
 		}
 
-		if (!this->make_node_succ(node_succ, node_prev)) {
-			cout << "it " << it << ", make_node_succ failed" << endl;
-			return false;
-		}
-
-		if (!this->find_res_col(res_col, order, start_time, node_prev, node_succ)) {
-			break;
-		}
-
-		this->graph.add_path(res_col.first.unlock, node_prev);
-		this->graph.add_path(res_col.second.unlock, node_prev);
-		
-		break;
+	if (!this->make_node_succ()) {
+		return false;
 	}
-	
+
+	if (!this->find_res_col(res_col)) {
+		return true;
+	}
 
 	
-	this->make_node_succ(node_succ, node_prev);
-	this->find_res_col(res_col, order, start_time, node_prev, node_succ);
+	auto old_path = this->graph.node_path;
 
-	cout << res_col.first.unlock << ", " << res_col.second.lock << ", " << res_col.res << endl;
+	this->graph.add_path(res_col.first.unlock, node_prev);
+	this->graph.add_path(res_col.second.unlock, node_prev);
+	
+	// cout << res_col.first.lock << " --> " << res_col.second.lock << endl;
+	int res_cons_idx = this->graph.add_res_cons(res_col.first.unlock, res_col.second.lock, res_col.res);
+	
+	if (this->solve()) {
+		return true;
+	}
 
-	return true;
+	this->graph.remove_last_res_cons(res_col.first.unlock, res_col.second.lock, res_cons_idx);
+
+	// cout << res_col.first.lock << " <-- " << res_col.second.lock << endl;
+	res_cons_idx = this->graph.add_res_cons(res_col.second.unlock, res_col.first.lock, res_col.res);
+
+	if (this->solve()) {
+		return true;
+	}
+
+	this->graph.remove_last_res_cons(res_col.second.unlock, res_col.first.lock, res_cons_idx);
+
+	// cout << res_col.first.lock << "  x  " << res_col.second.lock << endl;
+	this->graph.node_path = old_path;
+
+	return false;
 }
 
 
 
-bool Tree::make_node_succ(vector<int>& node_succ, const vector<int>& node_prev)
+bool Tree::make_node_succ()
 {
 	for (int n = 0; n < this->graph.n_nodes; n++) {
 		node_succ[n] = -1;
@@ -80,7 +78,7 @@ bool Tree::make_node_succ(vector<int>& node_succ, const vector<int>& node_prev)
 		int succ = n;
 		int curr = node_prev[succ];
 
-		node_succ[n] == -2; // signify end of train
+		node_succ[n] = -2; // signify end of train
 		
 		while (curr != -2) { // signify start of train
 			if (curr == -1) { // disconnected path - invalid
@@ -105,8 +103,7 @@ struct Res_lock
 };
 
 
-bool Tree::find_res_col(Res_col& res_col, const vector<int>& order, const vector<int>& start_time,
-		const vector<int>& node_prev, const vector<int>& node_succ)
+bool Tree::find_res_col(Res_col& res_col)
 {
 	vector<Res_lock> res_lock;
 	

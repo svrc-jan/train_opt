@@ -36,8 +36,12 @@ private:
 	const Instance& inst;
 	Graph graph;
 
-	bool make_node_succ(vector<int>& node_succ, const vector<int>& node_prev);
-	bool find_res_col(Res_col& res_col, const vector<int>& order, const vector<int>& start_time,
-		const vector<int>& node_prev, const vector<int>& node_succ);
+	vector<int> order;
+	vector<int> start_time;
+	vector<int> node_prev;
+	vector<int> node_succ;
+
+	bool make_node_succ();
+	bool find_res_col(Res_col& res_col);
 
 };
