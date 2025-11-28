@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "utils/prio_queue.hpp"
+#include "utils/deque.hpp"
 #include "instance.hpp"
 
 using namespace std;
@@ -53,7 +54,10 @@ public:
 
 private:
 	const Instance& inst;
+	
 	Prio_queue<int> prio_queue;
+	Deque<int> deque;
+
 
 	vector<int> n_res_cons = {};
 	vector<int> res_cons_idx = {};

@@ -22,6 +22,8 @@ public:
 	inline const Prio_queue_item<T>& top() const { return this->heap[0]; }
 	inline const Prio_queue_item<T>& back() const { return this->heap.back(); }
 
+	inline void reserve(size_t n) { this->heap.reserve(n); }
+
 	inline void clear() { this->heap.clear(); }
 	inline bool empty() const { return this->heap.size() == 0; }
 	

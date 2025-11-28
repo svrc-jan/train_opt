@@ -1,7 +1,7 @@
 #include "graph.hpp"
 
 #include <iostream>
-
+#include <queue>
 
 Graph::Graph(const Instance& inst) : inst(inst)
 {
@@ -21,6 +21,9 @@ Graph::Graph(const Instance& inst) : inst(inst)
 
 	this->n_pred.resize(this->n_ops);
 	this->res_locks.resize(this->n_res);
+
+	queue<int> q;
+	q.pop();
 }
 
 
