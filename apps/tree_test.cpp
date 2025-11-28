@@ -18,9 +18,9 @@ int main(int argc, char const *argv[])
 	Instance inst(file_name);
 	Tree tree(inst);
 
-	if (tree.solve(0)) {
-		cout << endl << "solved" << endl;
-	};
+	tree.solve(0);
+	cout << "solved in " << tree.n_solve_calls << " calls, obj: " << tree.obj_ub << endl;
 
+	
 	return 0;
 }

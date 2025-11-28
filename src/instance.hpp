@@ -26,6 +26,12 @@ struct Res
 	bool operator==(int other) const { return this->idx == other; }
 };
 
+struct Obj
+{
+	int threshold = 0;
+	int coeff = 0;
+	int increment = 0;
+};
 
 
 struct Op
@@ -36,11 +42,13 @@ struct Op
 	int start_lb = 0;
 	int start_ub = MAX_INT;
 
+	Obj* obj = nullptr;
 
 	Array<int> succ = {nullptr, 0};
 	Array<int> prev = {nullptr, 0};
 	Array<Res> res = {nullptr, 0};
 };
+
 
 struct Train
 {
@@ -56,6 +64,7 @@ class Instance
 public:
 	vector<Train> trains = {};
 	vector<Op> ops = {};
+	vector<Obj> objs = {};
 
 	Instance(const string& file_name);
 

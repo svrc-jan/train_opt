@@ -20,9 +20,11 @@ int main(int argc, char const *argv[])
 	Instance inst(file_name);
 	Graph graph(inst);
 
+	int obj;
+	vector<int> order;
 	Res_col res_col;
 
-	if (!graph.make_order(res_col)) {
+	if (!graph.make_order(order, res_col, obj)) {
 		cout << res_col.res << ": " <<
 			res_col.first.lock << "-" << res_col.first.unlock << " x " <<
 			res_col.second.lock << "-" << res_col.second.unlock << endl;

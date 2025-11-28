@@ -15,23 +15,35 @@ enum Op_state_enum
 };
 
 
+enum Make_order_return_enum
+{
+	RES_COL,
+	UB_REACHED,
+	TRAIN_UNFINISHED,
+	FEASIBLE
+};
+
 struct Res_lock;
 struct Res_col;
 struct Res_cons;
-
 
 class Graph
 {
 public:
 	Graph(const Instance& inst);
 
-	vector<int> time = {};
-	vector<bool> state = {};
-	vector<int> path_succ = {};
-	vector<int> path_prev = {};
+	int n_ops;
+	int n_res;
 
-	bool update_path(const int op, const int op_time);
-	bool make_order(Res_col& res_col);
+	vector<int> time = {};
+	vector<int> state = {};
+	vector<pair<int, int>> path = {};
+
+	bool update_path(const int train_idx);
+	int make_order(vector<int>& order, Res_col& res_col, int& obj);
+
+	bool lock_path(const int last_op);
+	bool reroute_path(const int start_op, const int last_op);
 
 	void extend_res_col(Res_col& res_col);
 	void extend_res_unlock(int& op_unlock, int res);
@@ -42,9 +54,6 @@ public:
 private:
 	const Instance& inst;
 	Prio_queue<int> prio_queue;
-	
-	int n_ops;
-	int n_res;
 
 	vector<int> n_res_cons = {};
 	vector<int> res_cons_idx = {};

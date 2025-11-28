@@ -21,6 +21,7 @@ void Instance::prepare(json inst_jsn)
 	int trains_size = 0;
 	int succ_size = 0;
 	int res_size = 0;
+	int objs_size = 0;
 
 	for (const json& train_jsn : inst_jsn["trains"]) {
 		trains_size++;
@@ -38,10 +39,14 @@ void Instance::prepare(json inst_jsn)
 		}
 	}
 
+	objs_size = inst_jsn["objective"].size();
+
+
 	this->ops.reserve(ops_size);
 	this->trains.reserve(trains_size);
 	this->op_succ.reserve(succ_size);
 	this->op_res.reserve(res_size);
+	this->objs.reserve(objs_size);
 }
 
 
@@ -104,6 +109,45 @@ void Instance::parse(json inst_jsn)
 	}
 
 	this->op_res.shrink_to_fit();
+
+	vector<int> op_obj_idx(this->n_ops(), -1);
+
+	for (const json& obj_jsn : inst_jsn["objective"]) {
+		assert(obj_jsn["type"] == "op_delay");
+
+		Obj obj;
+		if (obj_jsn.contains("threshold")) {
+			obj.threshold = obj_jsn["threshold"];
+		}
+
+		if (obj_jsn.contains("coeff")) {
+			obj.coeff = obj_jsn["coeff"];
+		}
+
+		if (obj_jsn.contains("increment")) {
+			obj.increment = obj_jsn["increment"];
+		}
+
+		if (obj.coeff == 0 && obj.increment == 0) {
+			continue;
+		}
+
+
+		int train_i = obj_jsn["train"];
+		int op_i = obj_jsn["operation"];
+
+		int op_idx = this->trains[train_i].op_start + op_i;
+
+		op_obj_idx[op_idx] = this->objs.size();
+		this->objs.push_back(obj);
+	}
+
+	for (int o = 0; o < this->n_ops(); o++) {
+		if (op_obj_idx[o] >= 0) {
+			this->ops[o].obj = &(this->objs[op_obj_idx[o]]);
+		}
+	}
+
 }
 
 void Instance::assign_arrays()

@@ -10,11 +10,10 @@ Graph::Graph(const Instance& inst) : inst(inst)
 
 	this->time.resize(this->n_ops);
 	this->state.resize(this->n_ops, OP_VALID);
-	this->path_prev.resize(this->n_ops, -1);
-	this->path_succ.resize(this->n_ops, -1);
+	this->path.resize(this->n_ops, {-1, -1});
 
-	for (auto& train : this->inst.trains) {
-		this->update_path(train.op_start, train.ops[0].start_lb);
+	for (int t = 0; t < this->inst.n_trains(); t++) {
+		this->update_path(t);
 	}
 
 	this->n_res_cons.resize(this->n_ops, 0); 
@@ -25,15 +24,29 @@ Graph::Graph(const Instance& inst) : inst(inst)
 }
 
 
-bool Graph::update_path(const int op, const int op_time)
+bool Graph::update_path(const int train_idx)
 {
-	auto& train = this->inst.trains[this->inst.ops[op].train];
+	auto& train = this->inst.trains[train_idx];
+	int op = train.op_start;
+	int op_time = this->time[op];
+
+	while (true) {
+		int succ = this->path[op].second;
+		if (succ < 0 || this->state[succ] != OP_REQUIRED) {
+			break;
+		}
+
+		op = succ;
+		op_time = this->time[op];
+	}
+	
 
 	for (int i = train.op_start; i <= train.op_last(); i++) {
 		this->time[i] = MAX_INT;
 	}
 
 	this->time[op] = op_time;
+
 	this->prio_queue.push(op, this->time[op]);
 
 	while (!this->prio_queue.empty()) {
@@ -49,7 +62,7 @@ bool Graph::update_path(const int op, const int op_time)
 
 		auto& curr_op = this->inst.ops[o];
 		for (int s : curr_op.succ) {
-			if (!this->state[s]) {
+			if (this->state[s] == OP_INVALID) {
 				continue;
 			}
 
@@ -65,7 +78,7 @@ bool Graph::update_path(const int op, const int op_time)
 	int prev;
 	int prev_time;
 	int curr = train.op_last();
-	this->path_succ[curr] = -2;
+	this->path[curr].second = -2;
 
 	while (curr != op) {
 		prev_time = MAX_INT;
@@ -82,8 +95,8 @@ bool Graph::update_path(const int op, const int op_time)
 			return false;
 		}
 
-		this->path_prev[curr] = prev;
-		this->path_succ[prev] = curr;
+		this->path[curr].first = prev;
+		this->path[prev].second = curr;
 		curr = prev;
 	}
 
@@ -91,12 +104,17 @@ bool Graph::update_path(const int op, const int op_time)
 }
 
 
-bool Graph::make_order(Res_col& res_col)
+int Graph::make_order(vector<int>& order, Res_col& res_col, int& obj)
 {
+	obj = 0;
+	order.clear();
+
 	memset(this->time.data(), 0, sizeof(int)*this->n_ops);
 	memset(this->n_pred.data(), 0, sizeof(int)*this->n_ops);
 	
 	vector<bool> added(this->n_ops, false);
+
+	bool no_res_col = true;
 
 	for (int r = 0; r < this->n_res; r++) {
 		this->res_locks[r] = {-1, -1, -1, -1};
@@ -116,23 +134,38 @@ bool Graph::make_order(Res_col& res_col)
 		}
 	}
 
-	while (!this->prio_queue.empty()) {
-		auto curr = this->prio_queue.top();
-		this->prio_queue.pop();
 
-		int o = curr.value;
-		int t = curr.prio;
+	while (!this->prio_queue.empty()) {
+		int o;
+		int t;
+
+		if (no_res_col) {
+			auto curr = this->prio_queue.top();
+			this->prio_queue.pop();
+			o = curr.value;
+			t = curr.prio;
+		}
+		else {
+			auto curr = this->prio_queue.back();
+			this->prio_queue.pop_back();
+			o = curr.value;
+			t = curr.prio;
+		}
 
 		assert(t == this->time[o]);
+
+		order.push_back(o);
 		
-		int o_prev = this->path_prev[o];
+		int o_prev = this->path[o].first;
 		if (o_prev >= 0) {
 			auto& op_prev = this->inst.ops[o_prev];
 			
-			for (auto& res : op_prev.res) {
-				auto& rl = this->res_locks[res.idx];
-				assert(rl.unlock == o_prev);
-				rl.time = t + res.time;
+			if (no_res_col) {
+				for (auto& res : op_prev.res) {
+					auto& rl = this->res_locks[res.idx];
+					assert(rl.unlock == o_prev);
+					rl.time = t + res.time;
+				}
 			}
 
 			int rc_idx = res_cons_idx[o_prev];
@@ -145,41 +178,61 @@ bool Graph::make_order(Res_col& res_col)
 					assert(!added[rc.op]);
 					added[rc.op] = true;
 
-					this->prio_queue.push(rc.op, this->time[rc.op]);
+					if (no_res_col) {
+						this->prio_queue.push(rc.op, this->time[rc.op]);
+					}
+					else {
+						this->prio_queue.push_back(rc.op, this->time[rc.op]);
+					}
+					
 				}
 				rc_idx = rc.next_idx;
 			}	
 		}
 
 		auto& op = this->inst.ops[o];
-		int o_succ = this->path_succ[o];
+		int o_succ = this->path[o].second;
 		int t_end = t + op.dur;
-		
-		for (auto& res : op.res) {
-			auto& rl = this->res_locks[res.idx];
-			int release_time = (o_succ != -2) ? MAX_INT : t_end;
-			if (rl.unlock == o_prev && o_prev >= 0) {
-				rl.unlock = o;
-				rl.time = release_time;
-				rl.res_time = res.time;
-			}
-			else if (rl.time <= t) {
-				rl.lock = o;
-				rl.unlock = o;
-				rl.time = release_time;
-				rl.res_time = res.time;
-			}
-			else {
-				res_col.first = {rl.lock, rl.unlock, rl.res_time};
-				res_col.second = {o, o, res.time};
-				res_col.res = res.idx;
 
-				assert(this->inst.ops[res_col.first.unlock].train != this->inst.ops[o].train);
+		if (t > op.start_ub) {
+			return UB_REACHED;
+		}
 
-
-				return false;
+		if (op.obj != nullptr) {
+			int delta = t - op.obj->threshold;
+			if (delta > 0) {
+				obj += delta*op.obj->coeff + op.obj->threshold;
 			}
 		}
+		
+		if (no_res_col) {
+			for (auto& res : op.res) {
+				auto& rl = this->res_locks[res.idx];
+				int release_time = (o_succ != -2) ? MAX_INT : t_end;
+				if (rl.unlock == o_prev && o_prev >= 0) {
+					rl.unlock = o;
+					rl.time = release_time;
+					rl.res_time = res.time;
+				}
+				else if (rl.time <= t) {
+					rl.lock = o;
+					rl.unlock = o;
+					rl.time = release_time;
+					rl.res_time = res.time;
+				}
+				else {
+					res_col.first = {rl.lock, rl.unlock, rl.res_time};
+					res_col.second = {o, o, res.time};
+					res_col.res = res.idx;
+
+					assert(this->inst.ops[res_col.first.unlock].train != this->inst.ops[o].train);
+
+					no_res_col = false;
+					break;
+				}
+			}
+		}
+		
 
 		if (o_succ >= 0) {
 			int op_time = max(t_end, this->inst.ops[o_succ].start_lb);
@@ -189,13 +242,69 @@ bool Graph::make_order(Res_col& res_col)
 			if (this->n_pred[o_succ] >= this->n_res_cons[o_succ] + 1) {
 				assert(!added[o_succ]);
 				added[o_succ] = true;
-					
-				this->prio_queue.push(o_succ, this->time[o_succ]);
+				
+				if (no_res_col) {
+					this->prio_queue.push(o_succ, this->time[o_succ]);
+				}
+				else {
+					this->prio_queue.push_back(o_succ, this->time[o_succ]);
+				}
 			}
 		}
 	}
 
+	for (auto& train : this->inst.trains) {
+		if (!added[train.op_last()]) {
+			return TRAIN_UNFINISHED;
+		}
+	}
+
+	if (!no_res_col) {
+		return RES_COL;
+	}
+
+	return FEASIBLE;
+}
+
+
+bool Graph::lock_path(const int last_op)
+{
+	int curr = last_op;
+	while (curr >= 0 && this->state[curr] != OP_REQUIRED) {
+		if (state[curr] == OP_INVALID) {
+			return false;
+		}
+		this->state[curr] = OP_REQUIRED;
+	}
 	return true;
+}
+
+
+bool Graph::reroute_path(const int start_op, const int last_op) 
+{
+	int prev = this->path[start_op].first;
+	int succ = this->path[last_op].second;
+
+	if (prev < 0 || succ < 0) {
+		return false;
+	}
+
+	int curr = start_op;
+	while (true) {
+		if (this->state[curr] == OP_REQUIRED) {
+			return false;
+		}
+
+		this->state[curr] = OP_INVALID;
+		
+		if (curr == last_op) {
+			break;
+		}
+
+		curr = this->path[curr].second;
+	}
+
+	return this->update_path(this->inst.ops[start_op].train);
 }
 
 
@@ -209,10 +318,12 @@ void Graph::extend_res_col(Res_col& res_col)
 void Graph::extend_res_unlock(int& op_unlock, int res)
 {
 	while (true) {
-		int op_succ = this->path_succ[op_unlock];
+		int op_succ = this->path[op_unlock].second;
+		
 		if (op_succ < 0 || this->inst.ops[op_succ].res.find(res) < 0) {
 			break;
 		}
+
 		op_unlock = op_succ;
 	}
 }

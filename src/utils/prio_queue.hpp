@@ -16,11 +16,15 @@ public:
 	void push(const T value, int prio);
 	bool pop();
 
+	inline void push_back(const T value, int prio) { heap.emplace_back(value, prio); }
+	inline void pop_back() { this->heap.pop_back(); }
+
+	inline const Prio_queue_item<T>& top() const { return this->heap[0]; }
+	inline const Prio_queue_item<T>& back() const { return this->heap.back(); }
+
 	inline void clear() { this->heap.clear(); }
 	inline bool empty() const { return this->heap.size() == 0; }
-	inline const Prio_queue_item<T>& top() const { return this->heap[0]; }
-
-
+	
 
 private:
 	std::vector<Prio_queue_item<T>> heap = {};
@@ -58,7 +62,6 @@ bool Prio_queue<T>::pop()
 
 	return true;
 }
-
 
 template<typename T>
 void Prio_queue<T>::heapify(size_t idx)

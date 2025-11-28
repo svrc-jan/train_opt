@@ -8,20 +8,18 @@ class Tree
 {
 public:
 	int n_solve_calls;
+	int obj_ub;
+
+	vector<pair<int, int>> best_sol = {};
 
 	Tree(const Instance& inst);
-	bool solve(int depth);
+	void solve(int depth);
 
 private:
 	const Instance& inst;
 	Graph graph;
 
-	vector<int> order;
-	vector<int> start_time;
-	vector<int> node_prev;
-	vector<int> node_succ;
+	vector<int> order = {};
 
-	bool make_node_succ();
-	bool find_res_col(Res_col& res_col);
-
+	void save_solution();
 };

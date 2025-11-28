@@ -56,40 +56,88 @@ void print_res_col(const Res_col& res_col, int type)
 
 
 
-bool Tree::solve(int depth)
+void Tree::solve(int depth)
 {
+	if (depth == 0) {
+		this->obj_ub = -1;
+	}
+
 	this->n_solve_calls += 1;
 
-	printf("depth: %04d, calls: %05d\r", depth, this->n_solve_calls);
+	printf("depth: %d, calls: %d, ub: %d \r", depth, this->n_solve_calls, this->obj_ub);
 	fflush(stdout);
 	
+	int obj = 0;
 	Res_col res_col;
 	int res_cons_idx;
 
-	if (this->graph.make_order(res_col)) {
-		return true;
+
+	int order_ret = this->graph.make_order(this->order, res_col, obj);
+
+	if (order_ret == TRAIN_UNFINISHED || order_ret == UB_REACHED) {
+		return;
 	}
+
+	if (obj >= this->obj_ub && this->obj_ub >= 0) {
+		return;
+	}
+
+	if (order_ret == FEASIBLE) {
+		this->obj_ub = obj;
+		this->save_solution();
+		return;
+	}
+
+
+
+
+	auto old_path = this->graph.path;
+	auto old_state = this->graph.state;
+
+	if (this->graph.reroute_path(res_col.first.lock, res_col.first.unlock)) {
+		this->solve(depth + 1);
+	}
+
+	this->graph.path = old_path;
+	this->graph.state = old_state;
+
+	if (this->graph.reroute_path(res_col.second.lock, res_col.second.unlock)) {
+		this->solve(depth + 1);
+	}
+
+	this->graph.path = old_path;
+	this->graph.state = old_state;
+
+	assert(this->graph.lock_path(res_col.first.unlock));
+	assert(this->graph.lock_path(res_col.second.unlock));
+
 
 	this->graph.extend_res_col(res_col);
 
 	// print_res_col(res_col, 0);
 	res_cons_idx = graph.add_res_cons(res_col, false);
-	if (this->solve(depth+1)) {
-		return true;
-	}
+	this->solve(depth+1);
 	this->graph.remove_last_res_cons(res_col, false, res_cons_idx);
 
 	// print_res_col(res_col, 1);
 	res_cons_idx = graph.add_res_cons(res_col, true);
-	if (this->solve(depth+1)) {
-		return true;
-	}
+	this->solve(depth+1);
 	this->graph.remove_last_res_cons(res_col, true, res_cons_idx);
 	// print_res_col(res_col, -1);
-	
-	return false;
+
+	this->graph.state = old_state;
 }
 
+
+void Tree::save_solution()
+{
+	this->best_sol.clear();
+	this->best_sol.reserve(this->order.size());
+
+	for (int o : this->order) {
+		best_sol.push_back({o, this->graph.time[o]});
+	}
+}
 
 
 
