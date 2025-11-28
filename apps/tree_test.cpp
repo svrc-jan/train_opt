@@ -18,8 +18,8 @@ int main(int argc, char const *argv[])
 	Instance inst(file_name);
 	Tree tree(inst);
 
-	if (tree.solve()) {
-		cout << "solved" << endl;
+	if (tree.solve(0)) {
+		cout << endl << "solved" << endl;
 	};
 
 	return 0;

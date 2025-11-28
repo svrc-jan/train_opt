@@ -1,5 +1,6 @@
 #include "instance.hpp"
 
+#include <set>
 #include "utils/files.hpp"
 
 
@@ -46,6 +47,9 @@ void Instance::prepare(json inst_jsn)
 
 void Instance::parse(json inst_jsn)
 {
+	set<int> res_set;
+	int n_res_duplicates = 0;
+
 	for (const json& train_jsn : inst_jsn["trains"]) {
 		Train train;
 		train.op_start = this->n_ops();
@@ -71,6 +75,8 @@ void Instance::parse(json inst_jsn)
 			}
 
 			if (op_jsn.contains("resources")) {
+				res_set.clear();
+
 				for (const auto& res_jsn : op_jsn["resources"]) {
 					Res res;
 
@@ -78,6 +84,12 @@ void Instance::parse(json inst_jsn)
 					if (res_jsn.contains("release_time")) {
 						res.time = res_jsn["release_time"];
 					}
+
+					if (res_set.find(res.idx) != res_set.end()) {
+						n_res_duplicates += 1;
+						continue;
+					}
+					res_set.insert(res.idx);
 
 					op.res.size += 1;
 					this->op_res.push_back(res);
@@ -90,6 +102,8 @@ void Instance::parse(json inst_jsn)
 
 		this->trains.push_back(train);
 	}
+
+	this->op_res.shrink_to_fit();
 }
 
 void Instance::assign_arrays()

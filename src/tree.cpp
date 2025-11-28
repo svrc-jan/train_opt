@@ -1,7 +1,7 @@
 #include "tree.hpp"
 
 #include <queue>
-#include <iostream>
+#include <cstdio>
 
 struct Path_step
 {
@@ -13,184 +13,84 @@ struct Path_step
 
 Tree::Tree(const Instance& inst) : inst(inst), graph(Graph(inst))
 {
-	this->order.reserve(this->graph.n_nodes);
-	this->start_time.resize(this->graph.n_nodes);
-	this->node_prev.resize(this->graph.n_nodes);
-	this->node_succ.resize(this->graph.n_nodes);
+	this->n_solve_calls = 0;
 }
 
 
-bool Tree::solve()
+void print_res_col(const Res_col& res_col, int type)
 {
+	char buf1[20];
+	char buf2[20];
+	char buf3[20];
+	
+	if (res_col.first.lock == res_col.first.unlock) {
+		sprintf(buf1, "     %-4d", res_col.first.lock);
+	}
+	else {
+		sprintf(buf1, "%4d:%-4d", res_col.first.lock, res_col.first.unlock);
+	}
+
+	if (res_col.second.lock == res_col.second.unlock) {
+		sprintf(buf3, "%4d", res_col.second.lock);
+	}
+	else {
+		sprintf(buf3, "%4d:%-4d", res_col.second.lock, res_col.second.unlock);
+	}
+
+	switch (type) {
+	case 0:
+		sprintf(buf2, "-->");
+		break;
+	
+	case 1:
+		sprintf(buf2, "<--");
+		break;
+
+	default:
+		sprintf(buf2, " x ");
+		break;
+	}
+
+	printf("%s %s %s\n", buf1, buf2, buf3);
+}
+
+
+
+bool Tree::solve(int depth)
+{
+	this->n_solve_calls += 1;
+
+	printf("depth: %04d, calls: %05d\r", depth, this->n_solve_calls);
+	fflush(stdout);
+	
 	Res_col res_col;
+	int res_cons_idx;
 
-	if (!this->graph.make_order(this->order, this->start_time, this->node_prev)) {
-			return false;
-		}
-
-	if (!this->make_node_succ()) {
-		return false;
-	}
-
-	if (!this->find_res_col(res_col)) {
+	if (this->graph.make_order(res_col)) {
 		return true;
 	}
 
-	
-	auto old_path = this->graph.node_path;
+	this->graph.extend_res_col(res_col);
 
-	this->graph.add_path(res_col.first.unlock, node_prev);
-	this->graph.add_path(res_col.second.unlock, node_prev);
-	
-	// cout << res_col.first.lock << " --> " << res_col.second.lock << endl;
-	int res_cons_idx = this->graph.add_res_cons(res_col.first.unlock, res_col.second.lock, res_col.res);
-	
-	if (this->solve()) {
+	// print_res_col(res_col, 0);
+	res_cons_idx = graph.add_res_cons(res_col, false);
+	if (this->solve(depth+1)) {
 		return true;
 	}
+	this->graph.remove_last_res_cons(res_col, false, res_cons_idx);
 
-	this->graph.remove_last_res_cons(res_col.first.unlock, res_col.second.lock, res_cons_idx);
-
-	// cout << res_col.first.lock << " <-- " << res_col.second.lock << endl;
-	res_cons_idx = this->graph.add_res_cons(res_col.second.unlock, res_col.first.lock, res_col.res);
-
-	if (this->solve()) {
+	// print_res_col(res_col, 1);
+	res_cons_idx = graph.add_res_cons(res_col, true);
+	if (this->solve(depth+1)) {
 		return true;
 	}
-
-	this->graph.remove_last_res_cons(res_col.second.unlock, res_col.first.lock, res_cons_idx);
-
-	// cout << res_col.first.lock << "  x  " << res_col.second.lock << endl;
-	this->graph.node_path = old_path;
-
+	this->graph.remove_last_res_cons(res_col, true, res_cons_idx);
+	// print_res_col(res_col, -1);
+	
 	return false;
 }
 
 
 
-bool Tree::make_node_succ()
-{
-	for (int n = 0; n < this->graph.n_nodes; n++) {
-		node_succ[n] = -1;
-	}
 
-	for (int n : this->graph.train_last_nodes) {
-		int succ = n;
-		int curr = node_prev[succ];
-
-		node_succ[n] = -2; // signify end of train
-		
-		while (curr != -2) { // signify start of train
-			if (curr == -1) { // disconnected path - invalid
-				return false;
-			}
-
-			node_succ[curr] = succ;
-
-			succ = curr;
-			curr = node_prev[curr];
-		}
-	}
-
-	return true;
-}
-
-struct Res_lock
-{
-	int first_node = -1;
-	int curr_node = -1;
-	int time = -1;
-};
-
-
-bool Tree::find_res_col(Res_col& res_col)
-{
-	vector<Res_lock> res_lock;
-	
-	res_lock.resize(this->inst.n_res());
-	for (int r = 0; r < this->inst.n_res(); r++) {
-		res_lock[r] = {-1, -1, -1};
-	}
-
-	res_col.res = -1;
-
-	for (int n_out : order) {
-		if (node_succ[n_out] == -1) {
-			continue;
-		}
-		int time = start_time[n_out];
-
-		int n_in = node_prev[n_out];
-
-		if (n_in >= 0) {
-			const auto& node_in = this->graph.nodes[n_in];
-
-			for (const auto& res : node_in.res) {
-				assert(res_lock[res.idx].curr_node == n_in);
-				res_lock[res.idx].time = time + res.time;
-			}
-		}
-
-		const auto& node_out = this->graph.nodes[n_out];
-		for (const auto& res : node_out.res) {
-			int release_time = (node_succ[n_out] == -2) ? time + res.time : -1;
-
-			auto& rl = res_lock[res.idx];
-			if (rl.curr_node == n_in) {
-				rl.curr_node = n_out;
-				rl.time = release_time;
-			}
-
-			else if (rl.curr_node == -1 || (rl.time <= time && rl.time != -1)) {
-				rl = {
-					.first_node = n_out,
-					.curr_node = n_out,
-					.time = release_time
-				};
-			}
-
-			else {
-				res_col.first = {
-					.lock = rl.first_node,
-					.unlock = rl.curr_node
-				};
-				res_col.second = {
-					.lock = n_out,
-					.unlock = n_out
-				};
-
-				res_col.res = res.idx;
-				break;
-			}
-		}
-
-		if (res_col.res != -1) {
-			break;
-		}
-	}
-
-	if (res_col.res == -1) {
-		return false;
-	}
-
-	// find first unlock op
-	while (true) {
-		int n_succ = node_succ[res_col.first.unlock];
-		if (n_succ < 0 || this->graph.nodes[n_succ].res.find_sorted(res_col.res) == -1) {
-			break;
-		}
-		res_col.first.unlock = n_succ;
-	}
-
-	// find second unlock op
-	while (true) {
-		int n_succ = node_succ[res_col.second.unlock];
-		if (n_succ < 0 || this->graph.nodes[n_succ].res.find_sorted(res_col.res) == -1) {
-			break;
-		}
-		res_col.second.unlock = n_succ;
-	}
-
-	return true;
-}
 

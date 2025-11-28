@@ -4,33 +4,13 @@
 #include "instance.hpp"
 #include "graph.hpp"
 
-struct Res_interval
-{
-	int lock_time = -1;
-	int unlock_time = -1;
-	int op = -1;
-};
-
-struct Res_col
-{
-	struct {
-		int lock = -1;
-		int unlock = -1;
-	} first;
-
-	struct {
-		int lock = -1;
-		int unlock = -1;
-	} second;
-
-	int res = -1;
-};
-
 class Tree
 {
 public:
+	int n_solve_calls;
+
 	Tree(const Instance& inst);
-	bool solve();
+	bool solve(int depth);
 
 private:
 	const Instance& inst;

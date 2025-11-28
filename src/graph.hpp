@@ -1,71 +1,97 @@
 #pragma once
 
 #include <vector>
-#include <tuple>
 
-#include "utils/array.hpp"
-#include "utils/chrono_tracker.hpp"
+#include "utils/prio_queue.hpp"
 #include "instance.hpp"
 
 using namespace std;
 
-
-struct Res_cons
+enum Op_state_enum 
 {
-	int node = -1;
-	int time = 0;
-	int next_idx = -1;
+	OP_INVALID,
+	OP_VALID,
+	OP_REQUIRED
 };
 
-struct Node
-{
-	int dur = 0;
-	int start_lb = 0;
-	int start_ub = MAX_INT;
 
-	int n_in_res_cons = 0;
-
-	Array<int> succ = {nullptr, 0};
-	Array<Res> res = {nullptr, 0};
-};
+struct Res_lock;
+struct Res_col;
+struct Res_cons;
 
 
 class Graph
 {
 public:
-	int n_nodes = 0;
-	vector<Node> nodes = {};
-
-	vector<int> node_train = {};
-	vector<int> node_valid = {};
-
-	vector<int> node_path = {};
-	vector<int> node_res_cons_idx = {};
-	vector<Res_cons> res_cons = {};
-
-	vector<int> train_start_nodes = {};
-	vector<int> train_last_nodes = {};
-
 	Graph(const Instance& inst);
 
-	bool make_order(vector<int>& order, vector<int>& start_time, vector<int>& node_prev);
-	
-	pair<int, int> add_path(int node, const vector<int>& node_prev);
-	int add_res_cons(int node_from, int node_to, int time);
-	void remove_last_res_cons(int node_from, int node_to, int res_cons_idx);
+	vector<int> time = {};
+	vector<bool> state = {};
+	vector<int> path_succ = {};
+	vector<int> path_prev = {};
 
-	void print_train_path(int train);
+	bool update_path(const int op, const int op_time);
+	bool make_order(Res_col& res_col);
+
+	void extend_res_col(Res_col& res_col);
+	void extend_res_unlock(int& op_unlock, int res);
+	
+	int add_res_cons(const Res_col& res_col, bool second_to_first);
+	void remove_last_res_cons(const Res_col& res_col, bool second_to_first, int res_cons_idx);
 
 private:
 	const Instance& inst;
-
-	Chrono_tracker op_chrono;
-	Chrono_tracker res_chrono;
-
-	vector<int> _node_succ = {};
-	vector<Res> _node_res = {};
+	Prio_queue<int> prio_queue;
 	
-	void make_chrono_order();
-	void make_op_data();
+	int n_ops;
+	int n_res;
+
+	vector<int> n_res_cons = {};
+	vector<int> res_cons_idx = {};
+	vector<Res_cons> res_cons = {};
+
+	vector<int> n_pred = {};
+	vector<Res_lock> res_locks = {};
+
+	void make_path_prev();
 };
+
+
+struct Res_lock
+{
+	int lock = -1;
+	int unlock = -1;
+	int time = -1;
+	int res_time = -1;
+};
+
+
+struct Res_col
+{
+	struct {
+		int lock = -1;
+		int unlock = -1;
+		int res_time = -1;
+	} first;
+
+	struct {
+		int lock = -1;
+		int unlock = -1;
+		int res_time = -1;
+	} second;
+	int res;
+};
+
+
+struct Res_cons
+{
+	int op = -1;
+	int time = 0;
+	int next_idx = -1;
+};
+
+
+
+
+
 
