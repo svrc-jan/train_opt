@@ -1,5 +1,6 @@
 #include "path_selector.hpp"
 
+#include <iostream>
 #include "coin/CoinBuild.hpp"
 
 Path_selector::Path_selector(const Instance& inst) : inst(inst)
@@ -19,17 +20,15 @@ Path_selector::~Path_selector()
 
 bool Path_selector::make_train_lp(int t)
 {
+	if (t < 0 || t >= this->inst.n_trains()) {
+		return false;
+	}
+
 	if (this->train_lps[t] != nullptr) {
 		return false;
 	}
 
 	auto& train = this->inst.trains[t];
-
-	int n_row = train.ops.size;
-	int n_col = 0;
-	for (auto& op : train.ops) {
-		n_col += op.succ.size;
-	}
 
 	ClpSimplex* lp = new ClpSimplex();
 	CoinBuild col_build(1);
@@ -50,6 +49,7 @@ bool Path_selector::make_train_lp(int t)
 		}
 	}
 
+	lp->resize(train.ops.size, 0);
 	lp->addColumns(col_build);
 
 	for (int row = 0; row < train.ops.size; row++) {
@@ -68,5 +68,30 @@ bool Path_selector::make_train_lp(int t)
 
 		lp->setRowBounds(row, row_bnd, row_bnd);
 	}
+
+	return true;
 }
 
+
+bool Path_selector::set_train_lp_obj(int t, const vector<double>& op_costs)
+{
+	if (this->train_lps[t] != nullptr) {
+		return false;
+	}
+
+	auto& train = this->inst.trains[t];
+	if ((int)op_costs.size() != train.ops.size) {
+		return false;
+	}
+
+	ClpSimplex* lp = this->train_lps[t];
+	
+	int col = 0;
+	for (int i = 0; i < train.ops.size; i++) {
+		auto& op = train.ops[i];
+
+		for (int s : op.succ) {
+			lp->setObjCoeff(i, op_costs[i]);
+		}
+	}
+}
