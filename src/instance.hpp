@@ -56,6 +56,7 @@ struct Train
 	Array<Op> ops = {nullptr, 0};
 
 	inline int op_last() const { return this->op_start + this->ops.size - 1; }
+	inline int op_end() const { return this->op_start + this->ops.size; }
 };
 
 

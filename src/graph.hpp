@@ -36,13 +36,13 @@ class Graph
 public:
 	Graph(const Instance& inst);
 
-	const int n_ops;
-	const int n_res;
 
 	void make_order();
 
 private:
 	const Instance& inst;
+	const int n_ops;
+	const int n_res;
 
 	// data
 	vector<int> topo_order;

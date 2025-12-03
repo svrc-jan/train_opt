@@ -2,23 +2,28 @@ cmake_minimum_required(VERSION 3.11-3.18)
 
 project(train_opt)
 
-include(CMakePrintHelpers)
-
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+add_compile_options(-O2 -Wall -g)
 
-set(CMAKE_PREFIX_PATH "/usr/local/lib")
-set(CMAKE_CXX_FLAGS "-O2 -Wall -g ${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}" )
-
-find_library(SOPLEX_LIB soplex)
-cmake_print_variables(SOPLEX_LIB)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/build)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/build)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/build)
 
+find_library(CLP_LIB Clp)
+find_library(CLP_SOLVER_LIB ClpSolver)
+find_library(COIN_UTILS_LIB CoinUtils)
+
+
+message(STATUS "COIN libs:"
+	${CLP_LIB} " "
+	${CLP_SOLVER_LIB} " "
+	${COIN_UTILS_LIB})
+
+link_libraries(${CLP_LIB} ${CLP_SOLVER_LIB} ${COIN_UTILS_LIB})
+
 include_directories(
-	/usr/local/include
+	/usr/include
 	${PROJECT_SOURCE_DIR}/lib 
 	${PROJECT_SOURCE_DIR}/src)
 
@@ -27,9 +32,6 @@ file(GLOB SOURCES "src/*.cpp" "src/utils/*.cpp")
 add_executable(instance_test apps/instance_test.cpp ${SOURCES})
 add_executable(graph_test apps/graph_test.cpp ${SOURCES})
 add_executable(tree_test apps/tree_test.cpp ${SOURCES})
-add_executable(soplex_tsp apps/soplex_tsp.cpp ${SOURCES})
-add_executable(soplex_task apps/soplex_tsp.cpp ${SOURCES})
+add_executable(path_selector_test apps/path_selector_test.cpp ${SOURCES})
 
-target_link_libraries(soplex_tsp -lz)
-target_link_libraries(soplex_tsp ${SOPLEX_LIB})
 
