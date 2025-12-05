@@ -45,7 +45,7 @@ struct Op
 	Obj* obj = nullptr;
 
 	Array<int> succ = {nullptr, 0};
-	Array<int> prev = {nullptr, 0};
+	Array<int> pred = {nullptr, 0};
 	Array<Res> res = {nullptr, 0};
 };
 
@@ -63,6 +63,8 @@ struct Train
 class Instance
 {
 public:
+	int max_n_train_ops = 0;
+
 	vector<Train> trains = {};
 	vector<Op> ops = {};
 	vector<Obj> objs = {};
@@ -73,19 +75,21 @@ public:
 	inline int n_ops() const { return this->ops.size(); }
 	inline int n_res() const { return this->res_name_to_idx.size(); }
 	inline int n_op_succ() const { return this->op_succ.size(); }
-	inline int n_op_prev() const { return this->op_prev.size(); }
+	inline int n_op_pred() const { return this->op_pred.size(); }
 	inline int n_op_res() const { return this->op_res.size(); }
 
 private:
 	vector<int> op_succ = {};
-	vector<int> op_prev = {};
+	vector<int> op_pred = {};
 	vector<Res> op_res = {};
+	vector<int> train_topo_order = {};
 	map<string, int> res_name_to_idx = {};
 
 	void prepare(json inst_jsn);
 	void parse(json inst_jsn);
 	void assign_arrays();
-	void assign_prev_ops();
+	void assign_pred_ops();
+	void propagate_bounds();
 
 	void add_res_name(string res_name);
 };

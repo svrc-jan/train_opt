@@ -1,7 +1,9 @@
-app="build/tree_test"
+app="build/preprocess_test"
 
 for file in data/*.json
 do
     #echo $file
     $app "$file"
 done
+
+

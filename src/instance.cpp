@@ -1,6 +1,7 @@
 #include "instance.hpp"
 
 #include <set>
+#include <queue>
 #include "utils/files.hpp"
 
 
@@ -11,7 +12,8 @@ Instance::Instance(const string& file_name)
 	this->prepare(inst_jsn);
 	this->parse(inst_jsn);
 	this->assign_arrays();
-	this->assign_prev_ops();
+	this->assign_pred_ops();
+	this->propagate_bounds();
 }
 
 
@@ -105,6 +107,7 @@ void Instance::parse(json inst_jsn)
 			this->ops.push_back(op);
 		}
 
+		this->max_n_train_ops = max(this->max_n_train_ops, train.ops.size);
 		this->trains.push_back(train);
 	}
 
@@ -172,31 +175,103 @@ void Instance::assign_arrays()
 }
 
 
-void Instance::assign_prev_ops()
+void Instance::assign_pred_ops()
 {
-	this->op_prev.resize(this->n_op_succ());
+	this->op_pred.resize(this->n_op_succ());
 
 	for (const Op& op : this->ops) {
 		for (int s : op.succ) {
-			this->ops[s].prev.size += 1;
+			this->ops[s].pred.size += 1;
 		}
 	}
 
 	int idx = 0;
 	for (Op& op : this->ops) {
-		op.prev.assign_ptr(this->op_prev, idx);
+		op.pred.assign_ptr(this->op_pred, idx);
 	}
-	assert(idx == this->n_op_prev());
+	assert(idx == this->n_op_pred());
 
 
-	vector<int> prev_filled(this->n_ops(), 0);
+	vector<int> pred_filled(this->n_ops(), 0);
 	for (int o = 0; o < this->n_ops(); o++) {
 		for (int s : this->ops[o].succ) {
-			this->ops[s].prev[prev_filled[s]++] = o;
+			this->ops[s].pred[pred_filled[s]++] = o;
 		}
 	}
 }
 
+
+void Instance::propagate_bounds()
+{
+	queue<int> que;
+	for (auto& train : this->trains) {
+#ifndef NO_VLA
+		int n_in[train.ops.size];
+#else
+		vector<int> n_in(train.ops.size);
+#endif
+		for (int i = 0; i < train.ops.size; i++) {
+			n_in[i] = train.ops[i].pred.size;
+		}
+
+		que.push(train.op_start);
+
+		while(!que.empty()) {
+			int o = que.front();
+			que.pop();
+			auto& op = this->ops[o];
+
+			for (int s : op.succ) {
+				n_in[s - train.op_start] -= 1;
+				if (n_in[s - train.op_start] == 0) {
+					que.push(s);
+				}
+			}
+
+			if (op.pred.size == 0) {
+				continue;
+			}
+
+			int pred_bound = MAX_INT;
+			for (int p : op.pred) {
+				auto& pred = this->ops[p];
+				pred_bound = min(pred_bound, pred.start_lb + pred.dur);
+			}
+			op.start_lb = max(op.start_lb, pred_bound);
+		}
+
+		for (int i = 0; i < train.ops.size; i++) {
+			n_in[i] = train.ops[i].succ.size;
+		}
+
+		que.push(train.op_last());
+
+		while(!que.empty()) {
+			int o = que.front();
+			que.pop();
+			auto& op = this->ops[o];
+
+			for (int p : op.pred) {
+				n_in[p - train.op_start] -= 1;
+				if (n_in[p - train.op_start] == 0) {
+					que.push(p);
+				}
+			}
+
+			if (op.succ.size == 0) {
+				continue;
+			}
+
+			int succ_bound = 0;
+			for (int s : op.succ) {
+				auto& succ = this->ops[s];
+				succ_bound = max(succ_bound, 
+					(succ.start_ub == MAX_INT) ? MAX_INT : succ.start_ub - op.dur);
+			}
+			op.start_lb = min(op.start_lb, succ_bound);
+		}
+	}
+}
 
 
 void Instance::add_res_name(string res_name)

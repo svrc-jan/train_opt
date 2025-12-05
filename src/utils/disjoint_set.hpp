@@ -2,8 +2,8 @@
 
 #include <vector>
 
-struct Disjoint_set {
-
+struct Disjoint_set
+{
 	int n_items;
 	int n_sets;
 

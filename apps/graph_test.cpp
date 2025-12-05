@@ -20,8 +20,5 @@ int main(int argc, char const *argv[])
 	Instance inst(file_name);
 	Graph graph(inst);
 
-	int obj;
-	vector<int> order;
-
 	return 0;
 }
