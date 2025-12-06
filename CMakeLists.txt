@@ -16,8 +16,8 @@ message(STATUS "json header: " ${JSON_HEADER})
 include_directories(
 	/usr/include
 	${PROJECT_SOURCE_DIR}/src
-	${PROJECT_SOURCE_DIR}/lib)
-
+	${PROJECT_SOURCE_DIR}/lib
+)
 
 add_subdirectory(src)
 

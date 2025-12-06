@@ -1,8 +1,8 @@
 /.vscode
-/CMakeCache.txt
-/CMakeFiles
-/Makefile
+/**/CMakeCache.txt
+/**/CMakeFiles
+/**/Makefile
 /build
-/cmake_install.cmake
+/**/cmake_install.cmake
 /gmon.out
 /analysis.txt
