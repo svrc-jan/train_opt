@@ -26,6 +26,8 @@ public:
 	bool select_path_by_res_imp(vector<int>& path, const int train_idx,
 		vector<double>& res_imp);
 
+	void select_all_paths_by_res_imp(vector<vector<int>>& paths);
+
 	void get_op_importance(vector<double>& op_imp);
 	void get_res_importance(vector<double>& res_imp, const vector<double>& op_imp);
 

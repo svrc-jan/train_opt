@@ -1,4 +1,4 @@
-app="build/preprocess_test"
+app="build/lin_prog_test"
 
 for file in data/*.json
 do

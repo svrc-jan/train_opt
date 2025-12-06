@@ -11,8 +11,6 @@
 using namespace std;
 using json = nlohmann::json;
 
-#define MAX_INT numeric_limits<int>::max()
-
 
 struct Res
 {
@@ -40,7 +38,7 @@ struct Op
 	
 	int dur = 0;
 	int start_lb = 0;
-	int start_ub = MAX_INT;
+	int start_ub = INT_MAX;
 
 	Obj* obj = nullptr;
 

@@ -5,6 +5,11 @@
 
 struct Level
 {
+	bool is_req = true;
+
+	int time_lb = 0;
+	int time_ub = INT_MAX;
+
 	Array<int> ops_in = {nullptr, 0};
 	Array<int> ops_out = {nullptr, 0};
 };
@@ -25,11 +30,14 @@ public:
 	vector<PP_train> trains = {};
 	vector<Level> levels = {};
 
-	vector<int> op_level_start = {};
-	vector<int> op_level_end = {};
+	vector<pair<int, int>> op_level = {};
 	
 	Preprocess(const Instance& inst);
 	void make_levels();
+	void make_level_bounds();
+	
+
+	bool is_routing_level(int l);
 
 	inline int n_trains() const { return this->trains.size(); }
 	inline int n_levels() const { return this->levels.size(); }
@@ -39,5 +47,4 @@ private:
 
 	vector<int> level_ops_out = {};
 	vector<int> level_ops_in = {};
-	
 };

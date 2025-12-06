@@ -23,6 +23,21 @@ struct Prio_op
 };
 
 
+void Path_selector::select_all_paths_by_res_imp(vector<vector<int>>& paths)
+{
+	vector<double> op_imp;
+	this->get_op_importance(op_imp);
+	
+	vector<double> res_imp;
+	this->get_res_importance(res_imp, op_imp);
+
+	paths.resize(this->inst.n_trains());
+	for (int t = 0; t < inst.n_trains(); t++) {
+		this->select_path_by_res_imp(paths[t], t, res_imp);
+	}
+}
+
+
 bool Path_selector::select_path_by_res_imp(vector<int>& path, const int train_idx,
 	vector<double>& res_imp)
 {

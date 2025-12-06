@@ -17,7 +17,6 @@ public:
 
 private:
 	const Instance& inst;
-	Graph graph;
 
 	vector<int> order = {};
 

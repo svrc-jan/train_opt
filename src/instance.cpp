@@ -203,8 +203,18 @@ void Instance::assign_pred_ops()
 
 void Instance::propagate_bounds()
 {
+#ifndef USE_OMP
 	queue<int> que;
+#endif
+
+#ifdef USE_OMP
+	#pragma omp parallel for schedule(static, 8)
+#endif
 	for (auto& train : this->trains) {
+#ifdef USE_OMP
+		queue<int> que;
+#endif
+
 #ifndef NO_VLA
 		int n_in[train.ops.size];
 #else
@@ -232,7 +242,7 @@ void Instance::propagate_bounds()
 				continue;
 			}
 
-			int pred_bound = MAX_INT;
+			int pred_bound = INT_MAX;
 			for (int p : op.pred) {
 				auto& pred = this->ops[p];
 				pred_bound = min(pred_bound, pred.start_lb + pred.dur);
@@ -266,7 +276,7 @@ void Instance::propagate_bounds()
 			for (int s : op.succ) {
 				auto& succ = this->ops[s];
 				succ_bound = max(succ_bound, 
-					(succ.start_ub == MAX_INT) ? MAX_INT : succ.start_ub - op.dur);
+					(succ.start_ub == INT_MAX) ? INT_MAX : succ.start_ub - op.dur);
 			}
 			op.start_lb = min(op.start_lb, succ_bound);
 		}
