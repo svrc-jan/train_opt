@@ -1,13 +1,12 @@
 #include <filesystem>
 
-#include <print>
 #include <iostream>
 
 #include "utils/stl_print.hpp"
 #include "instance.hpp"
 #include "preprocess.hpp"
 #include "path_selector.hpp"
-#include "lin_prog.hpp"
+#include "gurobi_model.hpp"
 
 
 using namespace std;
@@ -18,20 +17,18 @@ int main(int argc, char const *argv[])
 	string file_name = "data/nor1_full_0.json";
 	
 
-	char* train_opt_inst;
-	if ((train_opt_inst = getenv("TRAIN_OPT_INST")) != nullptr) {
-		file_name = string(train_opt_inst);
-	}
-
 	if (argc > 1) {
 		file_name = string(argv[1]);
 	}
+
+	GRBEnv grb_env = GRBEnv();
+	grb_env.set(GRB_IntParam_OutputFlag, 0);
 
 	cout << file_name << endl;
 	Instance inst(file_name);
 	Preprocess prepr(inst);
 	Path_selector path_sel(inst);
-	Lin_prog lin_prog(inst, prepr);
+	Gurobi_model grb_model(prepr, grb_env);
 
 	vector<double> op_imp;
 	path_sel.get_op_importance(op_imp);
@@ -39,27 +36,17 @@ int main(int argc, char const *argv[])
 	vector<double> res_imp;
 	path_sel.get_res_importance(res_imp, op_imp);
 
-	vector<int> path;
-	vector<vector<int>> paths;
+	vector<vector<int>> paths(inst.n_trains());
 	for (int t = 0; t < inst.n_trains(); t++) {
-		path_sel.select_path_by_res_imp(path, t, res_imp);
-		paths.push_back(path);
+		path_sel.select_path_by_res_imp(paths[t], t, res_imp);
 	}
 
-	lin_prog.init_model();
+	grb_model.init_model();
 	for (int t = 0; t < inst.n_trains(); t++) {
-		lin_prog.add_path(t, paths[t]);
+		grb_model.add_path(t, paths[t]);
 	}
 
-	bool ret = lin_prog.dfs_resolve();
-	
-	if (ret) {
-		println("solved");
-	}
-	else {
-		println("NOT solved");
-	}
-
+	grb_model.solve();
 
 	return 0;
 }

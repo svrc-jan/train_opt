@@ -1,10 +1,14 @@
 #include "graph.hpp"
 
-#include <iostream>
+#include <print>
 #include <queue>
 
-Graph::Graph(const Instance& inst, const Preprocess& prepr)
-	: inst(inst), prepr(prepr)
+#define MIN_RES_TIME 1
+
+using namespace std;
+
+Graph::Graph(const Preprocess& prepr)
+	: inst(prepr.inst), prepr(prepr)
 {
 	for (int t = 0; t < this->inst.n_trains(); t++) {
 		this->paths.push_back({});
@@ -15,6 +19,9 @@ Graph::Graph(const Instance& inst, const Preprocess& prepr)
 	}
 
 	this->n_nodes = this->prepr.n_levels();
+
+	this->time.resize(this->n_nodes, -1);
+	this->node_ops.resize(this->n_nodes, {-1, -1});
 	this->nodes_forw.resize(this->n_nodes, Node_forward());
 	this->nodes_backw.resize(this->n_nodes, Node_backward());
 }
@@ -42,6 +49,9 @@ void Graph::add_path(const int train_idx, const vector<int>& path)
 		int nd_start = this->prepr.op_level[o].first;
 		int nd_end = this->prepr.op_level[o].second;
 
+		this->node_ops[nd_start].second = o;
+		this->node_ops[nd_end].first = o;
+
 		auto& node_fw = this->nodes_forw[nd_start];
 		node_fw.succ = nd_end;
 		node_fw.res_cons_out.clear();
@@ -52,7 +62,7 @@ void Graph::add_path(const int train_idx, const vector<int>& path)
 
 		auto& node_bw = this->nodes_backw[nd_end];
 		node_bw.pred = nd_start;
-		node_bw.pred_dur = op.dur;
+		node_bw.dur_in = op.dur;
 		node_bw.res_cons_in.clear();
 	}
 
@@ -62,14 +72,14 @@ void Graph::add_path(const int train_idx, const vector<int>& path)
 			auto& ru = this->res_uses[res.idx];
 			if (ru.size() > 0 && ru.back().train == train_idx) {
 				ru.back().node_unlock = this->prepr.op_level[o].second;
-				ru.back().res_time = max(res.time, 1);
+				ru.back().res_time = max(res.time, MIN_RES_TIME);
 			}
 			else {
 				ru.push_back({
 					.train = train_idx,
 					.node_lock = this->prepr.op_level[o].first,
 					.node_unlock = this->prepr.op_level[o].second,
-					.res_time = max(res.time, 1)
+					.res_time = max(res.time, MIN_RES_TIME)
 				});
 			}
 		}
@@ -100,6 +110,8 @@ bool Graph::make_order()
 	while (!dq.empty())	{
 		int i = dq.front();
 		dq.pop_front();
+
+		this->order.push_back(i);
 
 		const auto& node_fw = this->nodes_forw[i];
 		if (node_fw.succ >= 0) {
@@ -132,7 +144,7 @@ bool Graph::make_time()
 		
 		t[i] = node_bw.time_lb;
 		if (node_bw.pred >= 0) {
-			t[i] = max(t[i], t[node_bw.pred] + node_bw.pred_dur);
+			t[i] = max(t[i], t[node_bw.pred] + node_bw.dur_in);
 		}
 
 		for (const auto& rc : node_bw.res_cons_in) {
@@ -161,7 +173,7 @@ struct Interval
 };
 
 
-bool Graph::get_res_col(Res_col& res_col)
+bool Graph::find_res_col(std::pair<Node_ordering, Node_ordering>& node_ords)
 {
 	int res_col_time = INT_MAX;
 	int res_col_overlap = 0;
@@ -192,9 +204,11 @@ bool Graph::get_res_col(Res_col& res_col)
 			if (a.end > res_col_time) {
 				break;
 			}
-
-			for (int j = i + 1; i < n_intervals; i++) {
+			for (int j = i + 1; j < n_intervals; j++) {
 				const auto& b = intervals[j];
+				if (b.start > res_col_time) {
+					break;
+				}
 
 				if (a.end <= b.start) {
 					break; // all further intervals start later
@@ -202,18 +216,84 @@ bool Graph::get_res_col(Res_col& res_col)
 				else {
 					int overlap = a.end - b.start;
 					if (b.start < res_col_time 
-						|| (b.start < res_col_time && overlap > res_col_overlap)) {
-						
+						|| (b.start == res_col_time && overlap > res_col_overlap)) {
+
 						res_col_time = b.start;
 						res_col_overlap = overlap;
-						
-						res_col.first = ru[a.idx];
-						res_col.second = ru[b.idx];
+
+						node_ords.first = {
+							.node_from = ru[a.idx].node_unlock,
+							.node_to = ru[b.idx].node_lock,
+							.res_time = ru[a.idx].res_time
+						};
+						node_ords.second = {
+							.node_from = ru[b.idx].node_unlock,
+							.node_to = ru[a.idx].node_lock,
+							.res_time = ru[b.idx].res_time
+						};
 					}
 				}
 			}
 		}
 	}
 
-	return res_col_time == INT_MAX;
+	return res_col_time < INT_MAX;
 }
+
+
+void Graph::clear_res_cons()
+{
+	for (auto& node_bw : this->nodes_backw) {
+		node_bw.res_cons_in.clear();
+	}
+
+	for (auto& node_fw : this->nodes_forw) {
+		node_fw.res_cons_out.clear();
+	}
+}
+
+void Graph::extend_node_ordering(Node_ordering& node_ord)
+{
+	pair<int, int> res_times = {-1, -1};
+	int op_a = this->node_ops[node_ord.node_from].second;
+	int op_b = this->node_ops[node_ord.node_to].first;
+	while (this->inst.has_res_overlap(op_a, op_b, res_times) && op_a >= 0 && op_b >= 0) {
+		node_ord.node_from = this->nodes_forw[node_ord.node_from].succ;
+		node_ord.node_to = this->nodes_backw[node_ord.node_to].pred;
+		node_ord.res_time = max(res_times.first, MIN_RES_TIME);
+
+		op_a = this->node_ops[node_ord.node_from].second;
+		op_b = this->node_ops[node_ord.node_to].first;
+	}
+}
+
+
+int Graph::get_node_ordering_delay(const Node_ordering& node_ord)
+{
+	int t1 = this->time[node_ord.node_from] + node_ord.res_time;
+	int t2 = this->time[node_ord.node_to];
+
+	assert(t1 > t2);
+
+	return t1 - t2;
+}
+
+
+
+void Graph::add_res_cons(const Node_ordering& ord)
+{
+	this->nodes_forw[ord.node_from].res_cons_out.push_back(ord.node_to);
+	this->nodes_backw[ord.node_to].res_cons_in.push_back({
+		.node = ord.node_from,
+		.time = ord.res_time
+	});
+}
+
+
+void Graph::remove_last_res_cons(const Node_ordering& ord)
+{
+	this->nodes_forw[ord.node_from].res_cons_out.pop_back();
+	this->nodes_backw[ord.node_to].res_cons_in.pop_back();
+}
+
+

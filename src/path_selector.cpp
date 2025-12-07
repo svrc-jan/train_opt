@@ -1,5 +1,6 @@
 #include "path_selector.hpp"
 
+#include <print>
 #include <cstdio>
 
 Path_selector::Path_selector(const Instance& inst) : inst(inst)
@@ -43,17 +44,15 @@ bool Path_selector::select_path_by_res_imp(vector<int>& path, const int train_id
 {
 	auto& train = this->inst.trains[train_idx];
 
-	int n_train_ops = train.ops.size;
-
 #ifndef NO_VLA
-	double op_cost[n_train_ops];
+	double op_cost[train.ops.size];
 #else
 	vector<double> op_cost(n_train_ops);
 #endif
 
 	for (int i = 0; i < train.ops.size; i++) {
 		double cost = 0;
-		auto& op = this->inst.ops[i + n_train_ops];
+		auto& op = this->inst.ops[i + train.op_start];
  
 		for (auto& res : op.res) {
 			cost += res_imp[res.idx];
@@ -62,7 +61,7 @@ bool Path_selector::select_path_by_res_imp(vector<int>& path, const int train_id
 	}
 
 #ifndef NO_VLA
-	return this->select_path(path, train_idx, op_cost, n_train_ops);
+	return this->select_path(path, train_idx, op_cost, train.ops.size);
 #else
 	return this->select_path(path, train_idx, op_cost);
 #endif

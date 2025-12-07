@@ -1,7 +1,10 @@
 #include "lin_prog.hpp"
 
+#include <print>
 #include "coin/CbcOrClpParam.hpp"
 #include "coin/CoinBuild.hpp"
+
+using namespace std;
 
 #define MIN_RES_TIME 0.1
 
@@ -72,6 +75,8 @@ void Lin_prog::add_path(const int train_idx, const vector<int> path)
 	}
 
 	this->lp->addRows(row_build);
+
+	this->n_rows = this->lp->numberRows();
 }
 
 
@@ -87,7 +92,7 @@ inline bool operator<(const Interval& a, const Interval& b)
 	return (a.start < b.start) ? true : ((a.start > b.start ) ? false : (a.end < b.end));
 }
 
-bool Lin_prog::find_res_col(pair<Res_use, Res_use>& res_col)
+bool Lin_prog::generate_res_cuts(std::pair<Res_cut, Res_cut>& cuts)
 {
 	const double* col_solution = this->lp->getColSolution();
 	double res_col_time = DBL_MAX;
@@ -99,12 +104,13 @@ bool Lin_prog::find_res_col(pair<Res_use, Res_use>& res_col)
 #else
 		vector<Interval> ints(n_ints);
 #endif
+
+		auto& ru = this->res_uses[r];
 		for (int i = 0; i < n_ints; i++) {
-			auto& ru = this->res_uses[r][i];
 			ints[i] = {
 				.idx = i,
-				.start = col_solution[ru.level_lock],
-				.end = col_solution[ru.level_unlock] + ru.res_time
+				.start = col_solution[ru[i].level_lock],
+				.end = col_solution[ru[i].level_unlock] + ru[i].res_time
 			};
 		}
 
@@ -115,17 +121,29 @@ bool Lin_prog::find_res_col(pair<Res_use, Res_use>& res_col)
 #endif
 		bool search_done = false;
 		for (int i = 0; i < n_ints && !search_done; i++) {
+			auto& int_a = ints[i];
 			for (int j = i + 1; j < n_ints && !search_done; j++) {
-				if (ints[i].end > ints[j].start) {
-					if (ints[j].start < res_col_time) {
-						res_col.first = this->res_uses[r][ints[i].idx];
-						res_col.second = this->res_uses[r][ints[j].idx];
+				auto int_b = ints[j];
+				if (int_a.end > res_col_time) {
+					break;
+				}
 
-						res_col_time = ints[j].start;
+				if (int_a.end > int_b.start) {
+					if (int_b.start < res_col_time) {
+						cuts.first = {
+							.level_from = ru[int_a.idx].level_unlock,
+							.level_to = ru[int_b.idx].level_lock,
+							.time = ru[int_a.idx].res_time
+						};
+						cuts.second = {
+							.level_from = ru[int_b.idx].level_unlock,
+							.level_to = ru[int_a.idx].level_lock,
+							.time = ru[int_b.idx].res_time
+						};
 
+						res_col_time = int_b.start;
 					}
 					
-
 					search_done = true;
 				}
 				else {
@@ -135,68 +153,99 @@ bool Lin_prog::find_res_col(pair<Res_use, Res_use>& res_col)
 		}
 	}
 
-	return res_col_time == DBL_MAX;
+	if (res_col_time == DBL_MAX) {
+		return false; // no collisions
+	}
+
+	bool diff1 = col_solution[cuts.first.level_from] - col_solution[cuts.first.level_to];
+	bool diff2 = col_solution[cuts.second.level_from] - col_solution[cuts.second.level_to];
+	
+
+	if (diff2 < diff1) {
+		swap(cuts.first, cuts.second);
+	}
+
+	return true;
 }
 
 
-bool Lin_prog::dfs_resolve(int depth)
+bool Lin_prog::dfs_resolve()
 {
-	if (depth == 0) {
-		ClpSolve solve_opts;
-		solve_opts.setSolveType(ClpSolve::useDual);
-		this->lp->initialSolve(solve_opts);
-	}
-	else {
-		this->lp->dual();
+	vector<pair<Res_cut, int>> cut_stack = {};
+	cut_stack.push_back({Res_cut(), 0});
+
+	while (!cut_stack.empty()) {
+		auto curr = cut_stack.back();
+		cut_stack.pop_back();
+
+		Res_cut curr_cut = curr.first;
+		int curr_depth = curr.second;
+
+		int cut_idx = -1;
+		if (curr_depth == 0) {
+			ClpSolve solve_opts;
+			solve_opts.setSolveType(ClpSolve::useDual);
+			this->lp->initialSolve(solve_opts);
+		}
+		else {
+			int n_curr_rows = this->lp->numberRows();
+			int n_extra_rows = n_curr_rows - this->n_rows - curr_depth + 1;
+
+			if (n_extra_rows > 0) {
+#if defined STATIC_LOG_LEVEL && STATIC_LOG_LEVEL >= 100
+				println("removing {} cuts", n_extra_rows);
+#endif
+				int extra_rows[n_extra_rows];
+
+				for (int i = 0; i < n_extra_rows; i++) {
+					extra_rows[i] = n_curr_rows - n_extra_rows + i;
+				}
+
+				this->lp->deleteRows(n_extra_rows, extra_rows);
+			}
+
+		
+			int cut_cols[2];
+			double cut_elems[2] = { 1.0, -1.0 };
+			double cut_bound;
+
+			cut_cols[0] = curr_cut.level_from;
+			cut_cols[1] = curr_cut.level_to;
+			cut_bound = -curr_cut.time;
+
+			this->lp->addRow(2, cut_cols, cut_elems, -DBL_MAX, cut_bound);
+
+#if defined STATIC_LOG_LEVEL && STATIC_LOG_LEVEL >= 100
+		println("cut {} -({:.1f})> {}",
+			curr_cut.level_from,
+			curr_cut.time,
+			curr_cut.level_to
+		);
+#endif
+			this->lp->dual();
+		}
+		
+		if (this->lp->status() == 0) {
+			std::pair<Res_cut, Res_cut> new_cuts;
+			if (!this->generate_res_cuts(new_cuts)) {
+				return true; // no cuts necessary solution found
+			}
+			
+			int train1 = this->prepr.levels[new_cuts.first.level_from].train;
+			int train2 = this->prepr.levels[new_cuts.second.level_from].train;
+
+			if (train1 < train2) {
+				cut_stack.push_back({new_cuts.second, curr_depth + 1});
+				cut_stack.push_back({new_cuts.first, curr_depth + 1});
+			}
+			else {
+				cut_stack.push_back({new_cuts.first, curr_depth + 1});
+				cut_stack.push_back({new_cuts.second, curr_depth + 1});
+			}
+		}
 	}
 
 	// infeasible
-	if (this->lp->status() != 0) {
-		return false;
-	}
-
-	pair<Res_use, Res_use> res_col;
-	if (this->find_res_col(res_col)) {
-		return true;
-	}
-
-	int n_cols = this->lp->numberColumns();
-	int n_rows = this->lp->numberRows();
-
-	ClpSimplex::Status col_status[n_cols];
-	ClpSimplex::Status row_status[n_rows];
-	
-	this->get_basis_status(col_status, row_status, n_cols, n_rows);
-
-	int cut_cols[2];
-	double cut_elems[2] = { 1.0, -1.0 };
-	double cut_bound;
-
-	int cut_idx = n_rows;
-	
-	cut_cols[0] = res_col.first.level_unlock;
-	cut_cols[1] = res_col.second.level_lock;
-	cut_bound = -res_col.first.res_time;
-	
-	this->lp->addRow(2, cut_cols, cut_elems, -DBL_MAX, cut_bound);
-	this->lp->setRowStatus(cut_idx, ClpSimplex::basic);
-	if (this->dfs_resolve(depth + 1)) {
-		return true;
-	};
-	this->lp->deleteRows(1, &cut_idx);
-	this->set_basis_status(col_status, row_status, n_cols, n_rows);
-
-	cut_cols[0] = res_col.second.level_unlock;
-	cut_cols[1] = res_col.first.level_lock;
-	cut_bound = -res_col.second.res_time;
-	
-	this->lp->addRow(2, cut_cols, cut_elems, -DBL_MAX, cut_bound);
-	this->lp->setRowStatus(cut_idx, ClpSimplex::basic);
-	if (this->dfs_resolve(depth + 1)) {
-		return true;
-	};
-	this->lp->deleteRows(1, &cut_idx);
-
 	return false;
 }
 

@@ -158,6 +158,62 @@ graph/fast:
 	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/graph.dir/build.make src/CMakeFiles/graph.dir/build
 .PHONY : graph/fast
 
+# Convenience name for target.
+src/CMakeFiles/path_selector.dir/rule:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/path_selector.dir/rule
+.PHONY : src/CMakeFiles/path_selector.dir/rule
+
+# Convenience name for target.
+path_selector: src/CMakeFiles/path_selector.dir/rule
+.PHONY : path_selector
+
+# fast build rule for target.
+path_selector/fast:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/path_selector.dir/build.make src/CMakeFiles/path_selector.dir/build
+.PHONY : path_selector/fast
+
+# Convenience name for target.
+src/CMakeFiles/solver.dir/rule:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/solver.dir/rule
+.PHONY : src/CMakeFiles/solver.dir/rule
+
+# Convenience name for target.
+solver: src/CMakeFiles/solver.dir/rule
+.PHONY : solver
+
+# fast build rule for target.
+solver/fast:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/solver.dir/build.make src/CMakeFiles/solver.dir/build
+.PHONY : solver/fast
+
+# Convenience name for target.
+src/CMakeFiles/lin_prog.dir/rule:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/lin_prog.dir/rule
+.PHONY : src/CMakeFiles/lin_prog.dir/rule
+
+# Convenience name for target.
+lin_prog: src/CMakeFiles/lin_prog.dir/rule
+.PHONY : lin_prog
+
+# fast build rule for target.
+lin_prog/fast:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/lin_prog.dir/build.make src/CMakeFiles/lin_prog.dir/build
+.PHONY : lin_prog/fast
+
+# Convenience name for target.
+src/CMakeFiles/gurobi_model.dir/rule:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/gurobi_model.dir/rule
+.PHONY : src/CMakeFiles/gurobi_model.dir/rule
+
+# Convenience name for target.
+gurobi_model: src/CMakeFiles/gurobi_model.dir/rule
+.PHONY : gurobi_model
+
+# fast build rule for target.
+gurobi_model/fast:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/gurobi_model.dir/build.make src/CMakeFiles/gurobi_model.dir/build
+.PHONY : gurobi_model/fast
+
 graph.o: graph.cpp.o
 .PHONY : graph.o
 
@@ -181,6 +237,30 @@ graph.s: graph.cpp.s
 graph.cpp.s:
 	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/graph.dir/build.make src/CMakeFiles/graph.dir/graph.cpp.s
 .PHONY : graph.cpp.s
+
+gurobi_model.o: gurobi_model.cpp.o
+.PHONY : gurobi_model.o
+
+# target to build an object file
+gurobi_model.cpp.o:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/gurobi_model.dir/build.make src/CMakeFiles/gurobi_model.dir/gurobi_model.cpp.o
+.PHONY : gurobi_model.cpp.o
+
+gurobi_model.i: gurobi_model.cpp.i
+.PHONY : gurobi_model.i
+
+# target to preprocess a source file
+gurobi_model.cpp.i:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/gurobi_model.dir/build.make src/CMakeFiles/gurobi_model.dir/gurobi_model.cpp.i
+.PHONY : gurobi_model.cpp.i
+
+gurobi_model.s: gurobi_model.cpp.s
+.PHONY : gurobi_model.s
+
+# target to generate assembly for a file
+gurobi_model.cpp.s:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/gurobi_model.dir/build.make src/CMakeFiles/gurobi_model.dir/gurobi_model.cpp.s
+.PHONY : gurobi_model.cpp.s
 
 instance.o: instance.cpp.o
 .PHONY : instance.o
@@ -206,6 +286,54 @@ instance.cpp.s:
 	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/instance.dir/build.make src/CMakeFiles/instance.dir/instance.cpp.s
 .PHONY : instance.cpp.s
 
+lin_prog.o: lin_prog.cpp.o
+.PHONY : lin_prog.o
+
+# target to build an object file
+lin_prog.cpp.o:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/lin_prog.dir/build.make src/CMakeFiles/lin_prog.dir/lin_prog.cpp.o
+.PHONY : lin_prog.cpp.o
+
+lin_prog.i: lin_prog.cpp.i
+.PHONY : lin_prog.i
+
+# target to preprocess a source file
+lin_prog.cpp.i:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/lin_prog.dir/build.make src/CMakeFiles/lin_prog.dir/lin_prog.cpp.i
+.PHONY : lin_prog.cpp.i
+
+lin_prog.s: lin_prog.cpp.s
+.PHONY : lin_prog.s
+
+# target to generate assembly for a file
+lin_prog.cpp.s:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/lin_prog.dir/build.make src/CMakeFiles/lin_prog.dir/lin_prog.cpp.s
+.PHONY : lin_prog.cpp.s
+
+path_selector.o: path_selector.cpp.o
+.PHONY : path_selector.o
+
+# target to build an object file
+path_selector.cpp.o:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/path_selector.dir/build.make src/CMakeFiles/path_selector.dir/path_selector.cpp.o
+.PHONY : path_selector.cpp.o
+
+path_selector.i: path_selector.cpp.i
+.PHONY : path_selector.i
+
+# target to preprocess a source file
+path_selector.cpp.i:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/path_selector.dir/build.make src/CMakeFiles/path_selector.dir/path_selector.cpp.i
+.PHONY : path_selector.cpp.i
+
+path_selector.s: path_selector.cpp.s
+.PHONY : path_selector.s
+
+# target to generate assembly for a file
+path_selector.cpp.s:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/path_selector.dir/build.make src/CMakeFiles/path_selector.dir/path_selector.cpp.s
+.PHONY : path_selector.cpp.s
+
 preprocess.o: preprocess.cpp.o
 .PHONY : preprocess.o
 
@@ -230,6 +358,30 @@ preprocess.cpp.s:
 	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/preprocess.dir/build.make src/CMakeFiles/preprocess.dir/preprocess.cpp.s
 .PHONY : preprocess.cpp.s
 
+solver.o: solver.cpp.o
+.PHONY : solver.o
+
+# target to build an object file
+solver.cpp.o:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/solver.dir/build.make src/CMakeFiles/solver.dir/solver.cpp.o
+.PHONY : solver.cpp.o
+
+solver.i: solver.cpp.i
+.PHONY : solver.i
+
+# target to preprocess a source file
+solver.cpp.i:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/solver.dir/build.make src/CMakeFiles/solver.dir/solver.cpp.i
+.PHONY : solver.cpp.i
+
+solver.s: solver.cpp.s
+.PHONY : solver.s
+
+# target to generate assembly for a file
+solver.cpp.s:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/solver.dir/build.make src/CMakeFiles/solver.dir/solver.cpp.s
+.PHONY : solver.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -239,17 +391,33 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... graph"
+	@echo "... gurobi_model"
 	@echo "... instance"
+	@echo "... lin_prog"
+	@echo "... path_selector"
 	@echo "... preprocess"
+	@echo "... solver"
 	@echo "... graph.o"
 	@echo "... graph.i"
 	@echo "... graph.s"
+	@echo "... gurobi_model.o"
+	@echo "... gurobi_model.i"
+	@echo "... gurobi_model.s"
 	@echo "... instance.o"
 	@echo "... instance.i"
 	@echo "... instance.s"
+	@echo "... lin_prog.o"
+	@echo "... lin_prog.i"
+	@echo "... lin_prog.s"
+	@echo "... path_selector.o"
+	@echo "... path_selector.i"
+	@echo "... path_selector.s"
 	@echo "... preprocess.o"
 	@echo "... preprocess.i"
 	@echo "... preprocess.s"
+	@echo "... solver.o"
+	@echo "... solver.i"
+	@echo "... solver.s"
 .PHONY : help
 
 

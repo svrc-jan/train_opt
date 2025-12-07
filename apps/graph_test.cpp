@@ -16,12 +16,12 @@ int main(int argc, char const *argv[])
         file_name = string(argv[1]);
     }
 
-	cout << file_name << endl;
+	print("{}\n", file_name);
 
 	Instance inst(file_name);
 	Path_selector path_sel(inst);
 	Preprocess prepr(inst);
-	Graph graph(inst, prepr);
+	Graph graph(prepr);
 
 	vector<vector<int>> paths;
 	path_sel.select_all_paths_by_res_imp(paths);
@@ -36,18 +36,6 @@ int main(int argc, char const *argv[])
 		print("make time failed");
 		return 2;
 	}
-
-	Res_col res_col;
-	if (!graph.get_res_col(res_col)) {
-		print("no res col");
-		return 0;
-	}
-
-	print("res col: {}:{} x {}:{}\n", 
-		res_col.first.node_lock,
-		res_col.first.node_unlock,
-		res_col.second.node_lock,
-		res_col.second.node_unlock);
 
 
 	return 0;

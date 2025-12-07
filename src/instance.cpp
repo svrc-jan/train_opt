@@ -2,8 +2,10 @@
 
 #include <set>
 #include <queue>
+#include <print>
 #include "utils/files.hpp"
 
+using namespace std;
 
 Instance::Instance(const string& file_name) 
 {
@@ -22,7 +24,7 @@ void Instance::prepare(json inst_jsn)
 	int ops_size = 0;
 	int trains_size = 0;
 	int succ_size = 0;
-	int res_size = 0;
+	int op_res_size = 0;
 	int objs_size = 0;
 
 	for (const json& train_jsn : inst_jsn["trains"]) {
@@ -33,7 +35,7 @@ void Instance::prepare(json inst_jsn)
 
 			succ_size += op_jsn["successors"].size();
 			if (op_jsn.contains("resources")) {
-				res_size += op_jsn["resources"].size();
+				op_res_size += op_jsn["resources"].size();
 				for (const auto& res_jsn : op_jsn["resources"]) {
 					this->add_res_name(res_jsn["resource"]);
 				}
@@ -47,7 +49,7 @@ void Instance::prepare(json inst_jsn)
 	this->ops.reserve(ops_size);
 	this->trains.reserve(trains_size);
 	this->op_succ.reserve(succ_size);
-	this->op_res.reserve(res_size);
+	this->op_res.reserve(op_res_size);
 	this->objs.reserve(objs_size);
 }
 
@@ -76,11 +78,13 @@ void Instance::parse(json inst_jsn)
 				op.start_ub = op_jsn["start_ub"];
 			}
 
+			op.succ.size = 0;
 			for (int s : op_jsn["successors"]) {
 				op.succ.size += 1;
 				this->op_succ.push_back(s + train.op_start);
 			}
 
+			op.res.size = 0;
 			if (op_jsn.contains("resources")) {
 				res_set.clear();
 
@@ -198,6 +202,11 @@ void Instance::assign_pred_ops()
 			this->ops[s].pred[pred_filled[s]++] = o;
 		}
 	}
+
+	for (int o = 0; o < this->n_ops(); o++) {
+		assert(this->ops[o].pred.size == pred_filled[o]);
+	}
+
 }
 
 
@@ -281,6 +290,36 @@ void Instance::propagate_bounds()
 			op.start_lb = min(op.start_lb, succ_bound);
 		}
 	}
+}
+
+
+bool Instance::has_res_overlap(const int a, const int b, 
+		std::pair<int, int>& res_times) const
+{
+	const auto& res_a = this->ops[a].res;
+	const auto& res_b = this->ops[b].res;
+
+	res_times = {-1, -1};
+
+	int i = 0;
+	int j = 0;
+	while (i < res_a.size && j < res_b.size) {
+		if (res_a[i].idx < res_b[j].idx) {
+			i++;
+		}
+		else if (res_a[i].idx > res_b[j].idx) {
+			j++;
+		}
+		else {
+			res_times.first = max(res_a[i].time, res_times.first);
+			res_times.second = max(res_b[i].time, res_times.second);
+
+			return true;
+		}
+	}
+
+	bool ret = res_times.first >= 0 || res_times.second >= 0;
+	return ret;
 }
 
 

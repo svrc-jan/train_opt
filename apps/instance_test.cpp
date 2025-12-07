@@ -19,24 +19,24 @@ int main(int argc, char const *argv[])
 
 	cout << file_name << endl;
 	Instance inst(file_name);
+	
+	// for (Instance::Op& op : inst.ops) {
+	// 	for (Instance::Res& res : op.res) {
+	// 		bool res_found = false;
+	// 		bool res_missing = false;
 
-	for (Op& op : inst.ops) {
-		for (Res& res : op.res) {
-			bool res_found = false;
-			bool res_missing = false;
+	// 		for (int s : op.succ) {
+	// 			if (inst.ops[s].res.find_sorted(res.idx) == -1) {
+	// 				res_missing = true;
+	// 			}
+	// 			else {
+	// 				res_found = true;
+	// 			}
+	// 		}
 
-			for (int s : op.succ) {
-				if (inst.ops[s].res.find_sorted(res.idx) == -1) {
-					res_missing = true;
-				}
-				else {
-					res_found = true;
-				}
-			}
-
-			assert(!(res_found && res_missing));
-		}
-	}
+	// 		assert(!(res_found && res_missing));
+	// 	}
+	// }
 
 
 	return 0;

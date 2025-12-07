@@ -1,5 +1,4 @@
 #pragma once
-
 #include <limits>
 #include <string>
 #include <vector>
@@ -8,11 +7,53 @@
 
 #include "utils/array.hpp"
 
-using namespace std;
 using json = nlohmann::json;
 
 
-struct Res
+class Instance
+{
+public:
+	struct Res;
+	struct Op;
+	struct Train;
+	struct Obj;
+
+	int max_n_train_ops = 0;
+
+	std::vector<Train> trains = {};
+	std::vector<Op> ops = {};
+	std::vector<Obj> objs = {};
+
+	Instance(const std::string& file_name);
+
+	inline int n_trains() const { return this->trains.size(); }
+	inline int n_ops() const { return this->ops.size(); }
+	inline int n_res() const { return this->res_name_to_idx.size(); }
+	inline int n_op_succ() const { return this->op_succ.size(); }
+	inline int n_op_pred() const { return this->op_pred.size(); }
+	inline int n_op_res() const { return this->op_res.size(); }
+
+	bool has_res_overlap(const int a, const int b, 
+		std::pair<int, int>& res_times) const;
+
+private:
+	std::vector<int> op_succ = {};
+	std::vector<int> op_pred = {};
+	std::vector<Res> op_res = {};
+	std::vector<int> train_topo_order = {};
+	std::map<std::string, int> res_name_to_idx = {};
+
+	void prepare(json inst_jsn);
+	void parse(json inst_jsn);
+	void assign_arrays();
+	void assign_pred_ops();
+	void propagate_bounds();
+
+	void add_res_name(std::string res_name);
+};
+
+
+struct Instance::Res
 {
 	int idx = -1;
 	int time = 0;
@@ -24,7 +65,7 @@ struct Res
 	bool operator==(int other) const { return this->idx == other; }
 };
 
-struct Obj
+struct Instance::Obj
 {
 	int threshold = 0;
 	int coeff = 0;
@@ -32,7 +73,7 @@ struct Obj
 };
 
 
-struct Op
+struct Instance::Op
 {
 	int train = -1;
 	
@@ -48,46 +89,11 @@ struct Op
 };
 
 
-struct Train
+struct Instance::Train
 {
 	int op_start = -1;
 	Array<Op> ops = {nullptr, 0};
 
 	inline int op_last() const { return this->op_start + this->ops.size - 1; }
 	inline int op_end() const { return this->op_start + this->ops.size; }
-};
-
-
-class Instance
-{
-public:
-	int max_n_train_ops = 0;
-
-	vector<Train> trains = {};
-	vector<Op> ops = {};
-	vector<Obj> objs = {};
-
-	Instance(const string& file_name);
-
-	inline int n_trains() const { return this->trains.size(); }
-	inline int n_ops() const { return this->ops.size(); }
-	inline int n_res() const { return this->res_name_to_idx.size(); }
-	inline int n_op_succ() const { return this->op_succ.size(); }
-	inline int n_op_pred() const { return this->op_pred.size(); }
-	inline int n_op_res() const { return this->op_res.size(); }
-
-private:
-	vector<int> op_succ = {};
-	vector<int> op_pred = {};
-	vector<Res> op_res = {};
-	vector<int> train_topo_order = {};
-	map<string, int> res_name_to_idx = {};
-
-	void prepare(json inst_jsn);
-	void parse(json inst_jsn);
-	void assign_arrays();
-	void assign_pred_ops();
-	void propagate_bounds();
-
-	void add_res_name(string res_name);
 };

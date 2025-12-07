@@ -1,4 +1,4 @@
-app="build/lin_prog_test"
+app="build/solver_test"
 
 for file in data/*.json
 do

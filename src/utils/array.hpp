@@ -96,7 +96,7 @@ template<typename T>
 void Array<T>::assign_ptr(const std::vector<T>& vec, int& idx)
 {
 	if (this->size > 0) {
-		this->ptr = (T*)&(vec[idx]);
+		this->ptr = (T*)vec.data() + idx;
 		idx += this->size;
 	}
 }

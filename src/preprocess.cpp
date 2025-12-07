@@ -5,9 +5,13 @@
 #include "utils/disjoint_set.hpp"
 #include "utils/stl_print.hpp"
 
+
+using namespace std;
+
+
 Preprocess::Preprocess(const Instance& inst) : inst(inst)
 {
-	this->trains.resize(this->inst.n_trains(), PP_train());
+	this->trains.resize(this->inst.n_trains(), Train());
 	this->make_levels();
 	this->make_level_bounds();
 }
@@ -150,6 +154,10 @@ void Preprocess::make_levels()
 				this->op_level[o].second = train.level_last();
 				train.levels.back().ops_in.size += 1;
 			}
+		}
+
+		for (auto& level : train.levels) {
+			level.train = t;
 		}
 	}
 

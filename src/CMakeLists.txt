@@ -1,23 +1,23 @@
-find_library(CLP_LIB Clp)
-find_library(CLP_SOLVER_LIB ClpSolver)
-find_library(COIN_UTILS_LIB CoinUtils)
-
-set(COIN_LIBS
-	${CLP_LIB} " "
-	${CLP_SOLVER_LIB} " "
-	${COIN_UTILS_LIB})
-
-message(STATUS "coin libs: " ${COIN_LIBS})
-
 add_subdirectory(utils)
 
 add_library(instance instance.cpp)
 target_link_libraries(instance files)
 
-
 add_library(preprocess preprocess.cpp)
-target_link_libraries(preprocess instance)
-
+target_link_libraries(preprocess instance disjoint_set)
 
 add_library(graph graph.cpp)
 target_link_libraries(graph preprocess instance)
+
+add_library(path_selector path_selector.cpp)
+target_link_libraries(path_selector instance)
+
+add_library(solver solver.cpp)
+target_link_libraries(solver graph)
+
+add_library(lin_prog lin_prog.cpp)
+target_link_libraries(lin_prog preprocess)
+
+add_library(gurobi_model gurobi_model.cpp)
+target_include_directories(gurobi_model PUBLIC ${GUROBI_INC})
+target_link_libraries(gurobi_model preprocess ${GUROBI_API_LIB} ${GUROBI_BASE_LIB})

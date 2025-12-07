@@ -3,34 +3,18 @@
 #include "utils/array.hpp"
 #include "instance.hpp"
 
-struct Level
-{
-	bool is_req = true;
-
-	int time_lb = 0;
-	int time_ub = INT_MAX;
-
-	Array<int> ops_in = {nullptr, 0};
-	Array<int> ops_out = {nullptr, 0};
-};
-
-struct PP_train
-{
-	int level_start = -1;
-	Array<Level> levels = {nullptr, 0};
-
-	inline int level_last() const { return this->level_start + this->levels.size - 1; }
-	inline int level_end() const { return this->level_start + this->levels.size; }
-};
-
-
 class Preprocess
 {
 public:
-	vector<PP_train> trains = {};
-	vector<Level> levels = {};
+	struct Level;
+	struct Train;
 
-	vector<pair<int, int>> op_level = {};
+	const Instance& inst;
+
+	std::vector<Train> trains = {};
+	std::vector<Level> levels = {};
+
+	std::vector<std::pair<int, int>> op_level = {};
 	
 	Preprocess(const Instance& inst);
 	void make_levels();
@@ -43,8 +27,30 @@ public:
 	inline int n_levels() const { return this->levels.size(); }
 
 private:
-	const Instance& inst;
 
-	vector<int> level_ops_out = {};
-	vector<int> level_ops_in = {};
+	std::vector<int> level_ops_out = {};
+	std::vector<int> level_ops_in = {};
+};
+
+
+struct Preprocess::Level
+{
+	int train = -1;
+	bool is_req = true;
+
+	int time_lb = 0;
+	int time_ub = INT_MAX;
+
+	Array<int> ops_in = {nullptr, 0};
+	Array<int> ops_out = {nullptr, 0};
+};
+
+
+struct Preprocess::Train
+{
+	int level_start = -1;
+	Array<Level> levels = {nullptr, 0};
+
+	inline int level_last() const { return this->level_start + this->levels.size - 1; }
+	inline int level_end() const { return this->level_start + this->levels.size; }
 };

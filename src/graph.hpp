@@ -2,88 +2,106 @@
 
 #include <vector>
 #include <deque>
-#include <queue>
+#include <unordered_map>
 
+#include "utils/hasher.hpp"
 #include "preprocess.hpp"
 #include "instance.hpp"
 
-using namespace std;
 
-struct Prio_queue_item
+
+class Graph
 {
-	int op;
-	int time;
+public:
+	struct Res_use;
+	struct Node_ordering;
+	
+	std::vector<int> time;
 
-	bool operator<(const Prio_queue_item& other) { return this->time < other.time; }
+	const Instance& inst;
+	const Preprocess& prepr;
+	
+	Graph(const Preprocess& prepr);
+
+	void add_all_paths(const std::vector<std::vector<int>>& paths);
+	void add_path(const int train_idx, const std::vector<int>& path);
+
+	bool make_order();
+	bool make_time();
+
+	bool find_res_col(std::pair<Node_ordering, Node_ordering>& node_ords);
+	void extend_node_ordering(Node_ordering& node_ord);
+
+	void add_res_cons(const Node_ordering& node_ord);
+	void remove_last_res_cons(const Node_ordering& node_ord);
+
+	int get_node_ordering_delay(const Node_ordering& node_ord);
+
+	void clear_res_cons();
+
+private:
+	struct Res_cons;
+	struct Node_forward;
+	struct Node_backward;
+
+	int n_nodes = 0;
+	std::vector<int> order;
+
+	std::vector<int> start_nodes = {};
+
+	std::vector<std::vector<int>> paths = {};
+	std::vector<std::vector<Res_use>> res_uses = {};
+
+	std::vector<Node_forward> nodes_forw = {};
+	std::vector<Node_backward> nodes_backw = {};
+	std::vector<std::pair<int, int>> node_ops = {};
+
+	// aux
+	std::deque<int> dq;
 };
 
 
-struct Res_use
+struct Graph::Res_use
 {
-	int train;
-	int node_lock;
-	int node_unlock;
-	int res_time;
+	int train = -1;
+	int node_lock = -1;
+	int node_unlock = -1;
+	int res_time = -1;
 };
 
-using Res_col = pair<Res_use, Res_use>;
 
-struct Res_cons
+struct Graph::Res_cons
 {
 	int node;
 	int time;
 };
 
 
-struct Node_forward
+struct Graph::Node_ordering
+{
+	int node_from = -1;
+	int node_to = -1;
+
+	int res_time = -1;
+};
+
+
+struct Graph::Node_forward
 {
 	int succ = -1;
-	vector<int> res_cons_out = {};
+	std::vector<int> res_cons_out = {};
 };
 
 
-struct Node_backward
+struct Graph::Node_backward
 {
 	int pred = -1;
-	int pred_dur = 0;
+	int dur_in = 0;
 	int time_lb = 0;
-	int time_ub = 0;
+	int time_ub = INT_MAX;
 
-	vector<Res_cons> res_cons_in = {};
+	std::vector<Res_cons> res_cons_in = {};
 };
-
-class Graph
-{
-public:
-	Graph(const Instance& inst, const Preprocess& prepr);
-
-	void add_all_paths(const vector<vector<int>>& paths);
-	void add_path(const int train_idx, const vector<int>& path);
-	bool make_order();
-	bool make_time();
-	bool get_res_col(Res_col& res_col);
-
-private:
-	const Instance& inst;
-	const Preprocess& prepr;
-
-	int n_nodes = 0;
-	vector<int> order;
-	vector<int> time;
-
-	vector<int> start_nodes = {};
-
-	vector<vector<int>> paths = {};
-	vector<vector<Res_use>> res_uses = {};
-
-	vector<Node_forward> nodes_forw = {};
-	vector<Node_backward> nodes_backw = {};
-
-	// aux
-	deque<int> dq;
-};
-
-
 
 
 
