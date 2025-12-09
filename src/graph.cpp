@@ -3,297 +3,206 @@
 #include <print>
 #include <queue>
 
-#define MIN_RES_TIME 1
-
 using namespace std;
 
 Graph::Graph(const Preprocess& prepr)
 	: inst(prepr.inst), prepr(prepr)
 {
-	for (int t = 0; t < this->inst.n_trains(); t++) {
-		this->paths.push_back({});
-	}
-	
-	for (int r = 0; r < this->inst.n_res(); r++) {
-		res_uses.push_back({});
-	}
-
-	this->n_nodes = this->prepr.n_levels();
-
-	this->time.resize(this->n_nodes, -1);
-	this->node_ops.resize(this->n_nodes, {-1, -1});
-	this->nodes_forw.resize(this->n_nodes, Node_forward());
-	this->nodes_backw.resize(this->n_nodes, Node_backward());
+	this->set_num_vertices(prepr.n_levels());
+	this->clear_constrains();
 }
 
 
-void Graph::add_all_paths(const vector<vector<int>>& paths)
+void Graph::set_num_vertices(const int n_ver)
 {
-	assert((int)paths.size() == this->inst.n_trains());
+	this->n_ver = n_ver;
 
-	for (int t = 0; t < this->inst.n_trains(); t++) {
-		this->add_path(t, paths[t]);
-	}
+	this->time.resize(n_ver, 0);
+	this->forward.resize(n_ver, Vertex_forward());
+	this->backward.resize(n_ver, Vertex_backward());
+	this->time_bounds.resize(n_ver, Vertex_time_bounds());
 }
 
 
-void Graph::add_path(const int train_idx, const vector<int>& path)
+void Graph::clear_constrains()
 {
-	this->paths[train_idx] = path;
+	for (auto& vtx_forward : this->forward) {
+		vtx_forward.constrains.clear();
+	}
 
-	this->start_nodes.push_back(this->prepr.trains[train_idx].level_start);
-	
+	for (auto& vtx_backward : this->backward) {
+		vtx_backward.constrains.clear();
+	}
+}
+
+void Graph::set_path(const vector<int>& path)
+{
+	// assume path is valid, no checking is done
 	for (int o : path) {
-		auto& op = this->inst.ops[o];
-
-		int nd_start = this->prepr.op_level[o].first;
-		int nd_end = this->prepr.op_level[o].second;
-
-		this->node_ops[nd_start].second = o;
-		this->node_ops[nd_end].first = o;
-
-		auto& node_fw = this->nodes_forw[nd_start];
-		node_fw.succ = nd_end;
-		node_fw.res_cons_out.clear();
-
-		auto& node_bnds = this->nodes_backw[nd_start];
-		node_bnds.time_lb = op.start_lb;
-		node_bnds.time_ub = op.start_ub;
-
-		auto& node_bw = this->nodes_backw[nd_end];
-		node_bw.pred = nd_start;
-		node_bw.dur_in = op.dur;
-		node_bw.res_cons_in.clear();
+		this->set_path_op(o);
 	}
 
-	for (int o : path) {
-		auto& op = this->inst.ops[o];
-		for (auto& res : op.res) {
-			auto& ru = this->res_uses[res.idx];
-			if (ru.size() > 0 && ru.back().train == train_idx) {
-				ru.back().node_unlock = this->prepr.op_level[o].second;
-				ru.back().res_time = max(res.time, MIN_RES_TIME);
-			}
-			else {
-				ru.push_back({
-					.train = train_idx,
-					.node_lock = this->prepr.op_level[o].first,
-					.node_unlock = this->prepr.op_level[o].second,
-					.res_time = max(res.time, MIN_RES_TIME)
-				});
-			}
-		}
+	int v_path_start = this->prepr.op_level[path[0]].first;
+	int v_path_end = this->prepr.op_level[path.back()].second;
+
+	this->backward[v_path_start].path = {.vertex = -1, .time = 0};
+	this->forward[v_path_start].path = -1;
+}
+
+
+void Graph::set_path_op(const int op)
+{
+	auto& inst_op = this->inst.ops[op];
+
+	int v_start = this->prepr.op_level[op].first;
+	int v_end = this->prepr.op_level[op].second;
+
+	auto& vtx_forward = this->forward[v_start];
+	auto& vtx_backward = this->backward[v_end];
+	auto& vtx_time_bounds = this->time_bounds[v_start];
+
+	vtx_forward.path = v_end;
+	vtx_backward.path = {.vertex = v_start, .time = inst_op.dur};
+	vtx_time_bounds = {.lower = inst_op.start_lb, .upper = inst_op.start_ub};
+}
+
+
+bool Graph::add_edge(const Edge& edge, const bool check_ub)
+{
+	if (!this->find_updates(edge.vertex_from,  edge.vertex_to)) {
+		return false;
+	}
+
+	if (!this->update_time(check_ub)) {
+		this->restore_old_time();
+
+		return false;
 	}
 }
 
 
-bool Graph::make_order()
+bool Graph::find_updates(const int v_from, const int v_cycle)
 {
-#ifndef NO_VLA
-	int n_pred[this->n_nodes];
-#else
-	vector<int> n_pred(this->n_nodes);
-#endif
+	this->to_update.clear();
+	this->clear_update_flag();
 
-	for (int i = 0; i < this->n_nodes; i++) {
-		const auto& node_bw = this->nodes_backw[i];
-		n_pred[i] = (node_bw.pred >= 0) + node_bw.res_cons_in.size();
-	}
-
-	this->order.clear();
-	for (int i : this->start_nodes) {
-		dq.push_back(i);
-	}
-
-	int paths_done = 0;
+	dq.push_back(v_from);
 	
-	while (!dq.empty())	{
-		int i = dq.front();
-		dq.pop_front();
+	while (!dq.empty()) {
+		int v_curr = this->dq.front();
+		this->dq.pop_back();
 
-		this->order.push_back(i);
+		const auto& vtx_forward = this->forward[v_curr];
 
-		const auto& node_fw = this->nodes_forw[i];
-		if (node_fw.succ >= 0) {
-			int j = node_fw.succ;
-			n_pred[j] -= 1;
-			if (n_pred[j] == 0) {
-				dq.push_front(j); // push front to help locality - same train
+		this->to_update.push_back(v_curr);
+		this->set_update_flag(v_curr);
+
+		int v_path = vtx_forward.path;
+		if (v_path >= 0) {
+			if (v_path == v_cycle) {
+				return false;
+			}
+
+			if (!this->get_update_flag(vtx_forward.path)) {
+				this->set_update_flag(vtx_forward.path);
+				dq.push_back(vtx_forward.path);
 			}
 		}
-		else {
-			paths_done += 1;
-		}
 
-		for (int j : node_fw.res_cons_out) {
-			n_pred[j] -= 1;
-			if (n_pred[j] == 0) {
-				dq.push_back(j);
+		for (int v_cons : vtx_forward.constrains) {
+			if (v_cons == v_cycle) {
+				return false;
 			}
-		}
-	}
 
-	return paths_done == (int)this->start_nodes.size();
-}
-
-bool Graph::make_time()
-{
-	auto& t = this->time;
-	for (int i : this->order) {
-		const auto& node_bw = this->nodes_backw[i];
-		
-		t[i] = node_bw.time_lb;
-		if (node_bw.pred >= 0) {
-			t[i] = max(t[i], t[node_bw.pred] + node_bw.dur_in);
-		}
-
-		for (const auto& rc : node_bw.res_cons_in) {
-			t[i] = max(t[i], t[rc.node] + rc.time);
-		}
-
-		if (t[i] > node_bw.time_ub) {
-			return false;
+			this->set_update_flag(v_cons);
+			dq.push_front(v_cons);
 		}
 	}
 
 	return true;
 }
 
-struct Interval
+bool Graph::update_time(const bool check_ub)
 {
-	int idx;
-	int start;
-	int end;
-
-	inline bool operator<(const Interval& other) 
-	{
-		return (this->start < other.start) ? true 
-			: ((this->start > other.start) ? false : (this->end < other.end));
-	}
-};
-
-
-bool Graph::find_res_col(std::pair<Node_ordering, Node_ordering>& node_ords)
-{
-	int res_col_time = INT_MAX;
-	int res_col_overlap = 0;
-
-	for (auto& ru : this->res_uses) {
-		int n_intervals = ru.size();
+	sort(this->to_update.begin(), this->to_update.end());
+	int n_upd = this->to_update.size();
+	
 #ifndef NO_VLA
-		Interval intervals[n_intervals];
+	char in_deg[this->n_ver];
 #else
-		vector<Interval> intervals(n_intervals);
-#endif	
+	vector<char> in_deg(this->n_ver);
+#endif
 
-		for (int i = 0; i < n_intervals; i++) {
-			intervals[i] = {
-				.idx = i,
-				.start = this->time[ru[i].node_lock],
-				.end = this->time[ru[i].node_unlock] + ru[i].res_time
-			};
+	for (int v : this->to_update) {
+		const auto& vtx_backward = this->backward[v];
+
+		char d = 0;
+		int v_path = vtx_backward.path.vertex;
+		if (v_path >= 0 && this->get_update_flag(v_path)) {
+
+			d += 1;
+		};
+
+		for (auto& cons : vtx_backward.constrains) {
+			if (this->get_update_flag(cons.vertex)) {
+				d += 1;
+			}
 		}
 
-#ifndef NO_VLA
-		sort(intervals, intervals + n_intervals);
-#else
-		sort(intervals.begin(), intervals.end());
-#endif	
-		for (int i = 0; i < n_intervals; i++) {
-			const auto& a = intervals[i];
-			if (a.end > res_col_time) {
-				break;
-			}
-			for (int j = i + 1; j < n_intervals; j++) {
-				const auto& b = intervals[j];
-				if (b.start > res_col_time) {
-					break;
-				}
-
-				if (a.end <= b.start) {
-					break; // all further intervals start later
-				}
-				else {
-					int overlap = a.end - b.start;
-					if (b.start < res_col_time 
-						|| (b.start == res_col_time && overlap > res_col_overlap)) {
-
-						res_col_time = b.start;
-						res_col_overlap = overlap;
-
-						node_ords.first = {
-							.node_from = ru[a.idx].node_unlock,
-							.node_to = ru[b.idx].node_lock,
-							.res_time = ru[a.idx].res_time
-						};
-						node_ords.second = {
-							.node_from = ru[b.idx].node_unlock,
-							.node_to = ru[a.idx].node_lock,
-							.res_time = ru[b.idx].res_time
-						};
-					}
-				}
-			}
+		if (d > 0) {
+			in_deg[v] = d;
+		}
+		else {
+			this->dq.push_back(v);
 		}
 	}
 
-	return res_col_time < INT_MAX;
-}
+	this->time_changes.clear();
 
+	while (!this->dq.empty()) {
+		int v_curr = this->dq.front();
+		this->dq.pop_front();
 
-void Graph::clear_res_cons()
-{
-	for (auto& node_bw : this->nodes_backw) {
-		node_bw.res_cons_in.clear();
+		const auto& vtx_forward = this->forward[v_curr];
+		const auto& vtx_backward = this->backward[v_curr];
+		const auto& vtx_time_bounds = this->time_bounds[v_curr];
+
+		TIME_T new_time = vtx_time_bounds.lower;
+		if (vtx_backward.path.vertex >= 0) {
+			new_time = max(new_time, this->time[vtx_backward.path.vertex]); 
+		};
+
+		for (auto& cons : vtx_backward.constrains) {
+			new_time = max(new_time, this->time[cons.vertex]);
+		}
+		
+		if (check_ub && TIME_GREATER(new_time, vtx_time_bounds.upper)) {
+			return false;
+		}
+
+		if (!TIME_EQUAL(new_time, this->time[v_curr])) {
+			this->time_changes.push_back({v_curr, this->time[v_curr]});
+			this->time[v_curr] = new_time;
+		}
+
+		int v_path = vtx_backward.path.vertex;
+		if (v_path >= 0 && this->get_update_flag(v_path)) {
+			in_deg[v_path] -= 1;
+			if (in_deg[v_path] == 0) {
+				this->dq.push_front(v_path); // prioritize same train for locality
+			}
+		};
+
+		for (auto& cons : vtx_backward.constrains) {
+			if (this->get_update_flag(cons.vertex)) {
+				in_deg[cons.vertex] -= 1;
+				if (in_deg[cons.vertex] == 0) {
+					this->dq.push_back(cons.vertex);
+				}
+			}
+		}
 	}
 
-	for (auto& node_fw : this->nodes_forw) {
-		node_fw.res_cons_out.clear();
-	}
+	return true;
 }
-
-void Graph::extend_node_ordering(Node_ordering& node_ord)
-{
-	pair<int, int> res_times = {-1, -1};
-	int op_a = this->node_ops[node_ord.node_from].second;
-	int op_b = this->node_ops[node_ord.node_to].first;
-	while (this->inst.has_res_overlap(op_a, op_b, res_times) && op_a >= 0 && op_b >= 0) {
-		node_ord.node_from = this->nodes_forw[node_ord.node_from].succ;
-		node_ord.node_to = this->nodes_backw[node_ord.node_to].pred;
-		node_ord.res_time = max(res_times.first, MIN_RES_TIME);
-
-		op_a = this->node_ops[node_ord.node_from].second;
-		op_b = this->node_ops[node_ord.node_to].first;
-	}
-}
-
-
-int Graph::get_node_ordering_delay(const Node_ordering& node_ord)
-{
-	int t1 = this->time[node_ord.node_from] + node_ord.res_time;
-	int t2 = this->time[node_ord.node_to];
-
-	assert(t1 > t2);
-
-	return t1 - t2;
-}
-
-
-
-void Graph::add_res_cons(const Node_ordering& ord)
-{
-	this->nodes_forw[ord.node_from].res_cons_out.push_back(ord.node_to);
-	this->nodes_backw[ord.node_to].res_cons_in.push_back({
-		.node = ord.node_from,
-		.time = ord.res_time
-	});
-}
-
-
-void Graph::remove_last_res_cons(const Node_ordering& ord)
-{
-	this->nodes_forw[ord.node_from].res_cons_out.pop_back();
-	this->nodes_backw[ord.node_to].res_cons_in.pop_back();
-}
-
 

@@ -1,108 +1,120 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
 #include <deque>
-#include <unordered_map>
 
-#include "utils/hasher.hpp"
+#include "time_type.hpp"
 #include "preprocess.hpp"
 #include "instance.hpp"
-
-
 
 class Graph
 {
 public:
-	struct Res_use;
-	struct Node_ordering;
-	
-	std::vector<int> time;
+	struct Edge;
 
 	const Instance& inst;
 	const Preprocess& prepr;
-	
+
 	Graph(const Preprocess& prepr);
 
-	void add_all_paths(const std::vector<std::vector<int>>& paths);
-	void add_path(const int train_idx, const std::vector<int>& path);
+	void set_num_vertices(const int n_vtx);
+	void clear_constrains();
 
-	bool make_order();
-	bool make_time();
+	void set_path(const std::vector<int>& path);
+	void set_path_op(const int op);
 
-	bool find_res_col(std::pair<Node_ordering, Node_ordering>& node_ords);
-	void extend_node_ordering(Node_ordering& node_ord);
+	bool add_edge(const Edge& edge, const bool check_ub=true);
+	bool find_updates(const int v_from, const int v_cycle);
+	bool update_time(const bool check_ub);
+	inline void restore_old_time();
 
-	void add_res_cons(const Node_ordering& node_ord);
-	void remove_last_res_cons(const Node_ordering& node_ord);
-
-	int get_node_ordering_delay(const Node_ordering& node_ord);
-
-	void clear_res_cons();
 
 private:
-	struct Res_cons;
-	struct Node_forward;
-	struct Node_backward;
+	struct Constraint;
+	struct Vertex_forward;
+	struct Vertex_backward;
+	struct Vertex_time_bounds;
 
-	int n_nodes = 0;
-	std::vector<int> order;
+	int n_ver = 0;
 
-	std::vector<int> start_nodes = {};
-
-	std::vector<std::vector<int>> paths = {};
-	std::vector<std::vector<Res_use>> res_uses = {};
-
-	std::vector<Node_forward> nodes_forw = {};
-	std::vector<Node_backward> nodes_backw = {};
-	std::vector<std::pair<int, int>> node_ops = {};
+	std::vector<TIME_T> time = {};
+	std::vector<Vertex_forward> forward = {};
+	std::vector<Vertex_backward> backward = {};
+	std::vector<Vertex_time_bounds> time_bounds = {};
 
 	// aux
 	std::deque<int> dq;
+
+	std::vector<int> to_update = {};
+	std::vector<int> update_order = {};
+
+	std::vector<uint64_t> update_flag;
+	inline void set_update_flag(int vertex);
+	inline bool get_update_flag(int vertex);
+	inline void clear_update_flag();
+
+	std::vector<std::pair<int, TIME_T>> time_changes = {};
 };
 
 
-struct Graph::Res_use
+struct Graph::Edge
 {
-	int train = -1;
-	int node_lock = -1;
-	int node_unlock = -1;
-	int res_time = -1;
+	int vertex_from = -1;
+	int vertex_to = -1;
+	TIME_T time = 0;
 };
 
 
-struct Graph::Res_cons
+struct Graph::Constraint
 {
-	int node;
-	int time;
+	int vertex = -1;
+	TIME_T time = 0;
 };
 
 
-struct Graph::Node_ordering
+struct Graph::Vertex_forward
 {
-	int node_from = -1;
-	int node_to = -1;
-
-	int res_time = -1;
+	int path = -1;
+	std::vector<int> constrains = {};
 };
 
 
-struct Graph::Node_forward
+struct Graph::Vertex_backward
 {
-	int succ = -1;
-	std::vector<int> res_cons_out = {};
+	Constraint path = {-1, 0};
+	std::vector<Constraint> constrains = {};
 };
 
-
-struct Graph::Node_backward
+struct Graph::Vertex_time_bounds
 {
-	int pred = -1;
-	int dur_in = 0;
-	int time_lb = 0;
-	int time_ub = INT_MAX;
-
-	std::vector<Res_cons> res_cons_in = {};
+	int lower = 0;
+	int upper = INT_MAX;
 };
 
 
+inline void Graph::set_update_flag(int vertex)
+{
+	this->update_flag[vertex/64] |= (1 << (vertex % 64));
+}
 
 
+inline bool Graph::get_update_flag(int vertex)
+{
+	return (this->update_flag[vertex/64] & (1 << (vertex % 64))) != 0;
+}
+
+
+inline void Graph::clear_update_flag()
+{
+	memset(this->update_flag.data(), 0, 
+		sizeof(uint64_t)*this->update_flag.size());
+}
+
+
+inline void Graph::restore_old_time()
+{
+	for (auto& change : this->time_changes) {
+		this->time[change.first] = change.second;
+	}
+}
