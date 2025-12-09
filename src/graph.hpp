@@ -1,9 +1,8 @@
 #pragma once
 
-#include <cstdint>
 #include <vector>
 #include <deque>
-
+#include "utils/flag.hpp"
 #include "time_type.hpp"
 #include "preprocess.hpp"
 #include "instance.hpp"
@@ -25,17 +24,11 @@ public:
 	void set_all_paths(const std::vector<std::vector<int>>& paths);
 	void set_path(const std::vector<int>& path);
 
-	void set_path_op(const int op);
 	bool add_edge(const Edge& edge, const bool check_ub=true);
-	bool remove_last_edge(const Edge& edge);
+	bool remove_edge(const Edge& edge);
 	inline void restore_time_changes(const std::vector<Time_change> &changes);
 
-	inline const std::vector<TIME_T>& get_time() const
-	{ return this->time; }
-
-	inline const std::vector<Time_change>& get_time_changes() const
-	{ return this->time_changes; }
-
+	inline TIME_T get_time(const int v);
 
 private:
 	struct Constraint;
@@ -45,27 +38,23 @@ private:
 
 	int n_ver = 0;
 
-	std::vector<TIME_T> time = {};
 	std::vector<Vertex_forward> forward = {};
 	std::vector<Vertex_backward> backward = {};
 	std::vector<Vertex_time_bounds> time_bounds = {};
 
+	std::vector<TIME_T> time = {};
+
 	// aux
 	std::deque<int> dq;
 
-	std::vector<int> to_update = {};
-	std::vector<int> update_order = {};
+	Flag dirty;
+	Flag visited;
+	std::vector<int> need_update = {};
 
-	std::vector<uint64_t> update_flag;
-	inline void set_update_flag(int vertex);
-	inline bool get_update_flag(int vertex);
-	inline void clear_update_flag();
-
-	std::vector<Time_change> time_changes = {};
-
-	bool find_updates(const int v_from, const int v_cycle);
-	bool update_time(const bool check_ub);
-
+	void set_path_op(const int op);
+	bool find_visited(const int v_from, const int v_cycle);
+	void mark_dirty(const int v_from);
+	void update_time(const int v_from);
 };
 
 
@@ -103,6 +92,7 @@ struct Graph::Vertex_backward
 	std::vector<Constraint> constrains = {};
 };
 
+
 struct Graph::Vertex_time_bounds
 {
 	int lower = 0;
@@ -110,28 +100,12 @@ struct Graph::Vertex_time_bounds
 };
 
 
-inline void Graph::set_update_flag(int vertex)
+TIME_T Graph::get_time(const int v)
 {
-	this->update_flag[vertex/64] |= (1 << (vertex % 64));
-}
-
-
-inline bool Graph::get_update_flag(int vertex)
-{
-	return (this->update_flag[vertex/64] & (1 << (vertex % 64))) != 0;
-}
-
-
-inline void Graph::clear_update_flag()
-{
-	memset(this->update_flag.data(), 0, 
-		sizeof(uint64_t)*this->update_flag.size());
-}
-
-
-inline void Graph::restore_time_changes(const std::vector<Time_change> &changes)
-{
-	for (auto& change : this->time_changes) {
-		this->time[change.vertex] = change.old_value;
+	if (this->dirty.get(v)) {
+		this->update_time(v);
 	}
+
+	return this->time[v];
 }
+

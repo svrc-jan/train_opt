@@ -1,7 +1,5 @@
 #include "graph.hpp"
 
-#include <print>
-#include <queue>
 
 using namespace std;
 
@@ -21,6 +19,9 @@ void Graph::set_num_vertices(const int n_ver)
 	this->forward.resize(n_ver, Vertex_forward());
 	this->backward.resize(n_ver, Vertex_backward());
 	this->time_bounds.resize(n_ver, Vertex_time_bounds());
+
+	this->dirty.resize_for_items(this->n_ver);
+	this->visited.resize_for_items(this->n_ver);
 }
 
 
@@ -73,20 +74,18 @@ void Graph::set_path_op(const int op)
 	vtx_forward.path = v_end;
 	vtx_backward.path = {.vertex = v_start, .time = inst_op.dur};
 	vtx_time_bounds = {.lower = inst_op.start_lb, .upper = inst_op.start_ub};
+
+	this->dirty.set_true(v_end);
 }
 
 
 bool Graph::add_edge(const Edge& edge, const bool check_ub)
 {
-	if (!this->find_updates(edge.vertex_from,  edge.vertex_to)) {
+	if (!this->find_visited(edge.vertex_from,  edge.vertex_to)) {
 		return false;
 	}
 
-	if (!this->update_time(check_ub)) {
-		this->restore_time_changes(this->time_changes);
-
-		return false;
-	}
+	this->dirty.update(this->visited);
 
 	this->forward[edge.vertex_from].constrains.push_back(edge.vertex_to);
 	this->backward[edge.vertex_from].constrains.push_back({
@@ -97,40 +96,51 @@ bool Graph::add_edge(const Edge& edge, const bool check_ub)
 	return true;
 }
 
-bool Graph::remove_last_edge(const Edge& edge)
+bool Graph::remove_edge(const Edge& edge)
 {
 	auto& forward_cons = this->forward[edge.vertex_from].constrains;
 	auto& backward_cons = this->backward[edge.vertex_from].constrains;
 
-	if (forward_cons.back() != edge.vertex_to 
-		|| backward_cons.back().vertex != edge.vertex_from) {
+	int forward_idx = -1;
+	for (int i = (int)forward.size() - 1; i >= 0; i--) {
+		if (forward_cons[i] == edge.vertex_to) {
+			forward_idx = i;
+			break;
+		}
+	}
 
+	int backward_idx = -1;
+	for (int i = (int)backward.size() - 1; i >= 0; i--) {
+		if (backward_cons[i].vertex == edge.vertex_from 
+			&& backward_cons[i].time == edge.time) {
+			
+			backward_idx = i;
+			break;
+		}
+	}
+
+	if (forward_idx < 0 || backward_idx < 0) {
 		return false;
 	}
 
-	forward_cons.pop_back();
-	backward_cons.pop_back();
+	this->mark_dirty(edge.vertex_from);
 
 	return true;
 };
 
 
-
-bool Graph::find_updates(const int v_from, const int v_cycle)
+bool Graph::find_visited(const int v_from, const int v_cycle)
 {
-	this->to_update.clear();
-	this->clear_update_flag();
+	this->visited.clear();
 
-	dq.push_back(v_from);
-	
-	while (!dq.empty()) {
+	this->visited.set_true(v_from);
+	this->dq.push_back(v_from);
+
+	while (!this->dq.empty()) {
 		int v_curr = this->dq.front();
-		this->dq.pop_back();
+		this->dq.pop_front();
 
 		const auto& vtx_forward = this->forward[v_curr];
-
-		this->to_update.push_back(v_curr);
-		this->set_update_flag(v_curr);
 
 		int v_path = vtx_forward.path;
 		if (v_path >= 0) {
@@ -138,62 +148,128 @@ bool Graph::find_updates(const int v_from, const int v_cycle)
 				return false;
 			}
 
-			if (!this->get_update_flag(vtx_forward.path)) {
-				this->set_update_flag(vtx_forward.path);
-				dq.push_back(vtx_forward.path);
+			if (!this->visited.get(v_path)) {
+				this->visited.set_true(v_path);
+				this->dq.push_back(v_path);
 			}
 		}
 
 		for (int v_cons : vtx_forward.constrains) {
 			if (v_cons == v_cycle) {
-				return false;
+				return true;
 			}
 
-			this->set_update_flag(v_cons);
-			dq.push_front(v_cons);
+			if (!this->visited.get(v_path)) {
+				this->visited.set_true(v_path);
+				this->dq.push_front(v_path); // prioritize resource branching to find cycles
+			}
 		}
 	}
-
-	return true;
 }
 
-bool Graph::update_time(const bool check_ub)
+
+void Graph::mark_dirty(const int v_from)
 {
-	sort(this->to_update.begin(), this->to_update.end());
-	int n_upd = this->to_update.size();
-	
-#ifndef NO_VLA
-	char in_deg[this->n_ver];
-#else
-	vector<char> in_deg(this->n_ver);
-#endif
+	this->dirty.set_true(v_from);
+	this->dq.push_back(v_from);
 
-	for (int v : this->to_update) {
-		const auto& vtx_backward = this->backward[v];
+	while (!this->dq.empty()) {
+		int v_curr = this->dq.front();
+		this->dq.pop_front();
 
-		char d = 0;
-		int v_path = vtx_backward.path.vertex;
-		if (v_path >= 0 && this->get_update_flag(v_path)) {
+		const auto& vtx_forward = this->forward[v_curr];
 
-			d += 1;
-		};
-
-		for (auto& cons : vtx_backward.constrains) {
-			if (this->get_update_flag(cons.vertex)) {
-				d += 1;
+		int v_path = vtx_forward.path;
+		if (v_path >= 0) {
+			if (!this->dirty.get(v_path)) {
+				this->dirty.set_true(v_path);
+				this->dq.push_front(v_path);
 			}
 		}
 
-		if (d > 0) {
-			in_deg[v] = d;
+		for (int v_cons : vtx_forward.constrains) {
+			if (!this->dirty.get(v_cons)) {
+				this->dirty.set_true(v_cons);
+				this->dq.push_back(v_cons);
+			}
 		}
-		else {
-			this->dq.push_back(v);
+	}
+}
+
+
+void Graph::update_time(const int v_from)
+{
+	// backward pass to find all dirty predecessors
+	this->visited.clear();
+	this->need_update.clear();
+
+	this->visited.set_true(v_from);
+	this->need_update.push_back(v_from);
+	this->dq.push_back(v_from);
+
+	while (!this->dq.empty()) {
+		int v_curr = this->dq.front();
+		this->dq.pop_front();
+
+		const auto& vtx_backward = this->backward[v_curr];
+
+		int v_path = vtx_backward.path.vertex;
+		if (v_path >= 0) {
+			if (!this->visited.get(v_path) && this->dirty.get(v_path)) {
+				this->visited.set_true(v_path);
+				this->need_update.push_back(v_path);
+				this->dq.push_front(v_path);
+			}
+		}
+
+		for (const auto& cons : vtx_backward.constrains) {
+			int v_cons = cons.vertex;
+			if (!this->visited.get(v_cons) && this->dirty.get(v_cons)) {
+				this->visited.set_true(v_cons);
+				this->need_update.push_back(v_cons);
+				this->dq.push_back(v_cons);
+			}
 		}
 	}
 
-	this->time_changes.clear();
+	sort(this->need_update.begin(), this->need_update.end());	
 
+#ifndef NO_VLA
+	uint8_t n_dep[this->n_ver];
+#else
+	vector<uint8_t> n_dep(this->n_ver);
+#endif
+
+	// calculate number of dependencies
+	for (int v : this->need_update) {
+		const auto& vtx_backward = this->backward[v];
+
+		int vtx_n_dep = 0;
+
+		int v_path = vtx_backward.path.vertex;
+		if (v_path >= 0) {
+			if (this->visited.get(v_path)) {
+				vtx_n_dep += 1;
+			}
+		}
+
+		for (const auto& cons : vtx_backward.constrains) {
+			int v_cons = cons.vertex;
+			if (this->visited.get(v_cons)) {
+				vtx_n_dep += 1;
+			}
+		}
+
+		assert(vtx_n_dep <= UINT8_MAX);
+		if (n_dep == 0) {
+			this->dq.push_back(v);
+		}
+		else {
+			n_dep[v] = vtx_n_dep;
+		}
+	}
+
+	// forward pass to update times from previous
 	while (!this->dq.empty()) {
 		int v_curr = this->dq.front();
 		this->dq.pop_front();
@@ -202,42 +278,43 @@ bool Graph::update_time(const bool check_ub)
 		const auto& vtx_backward = this->backward[v_curr];
 		const auto& vtx_time_bounds = this->time_bounds[v_curr];
 
-		TIME_T new_time = vtx_time_bounds.lower;
-		if (vtx_backward.path.vertex >= 0) {
-			new_time = max(new_time, this->time[vtx_backward.path.vertex]); 
-		};
+		// backward time updates
+		this->time[v_curr] = vtx_time_bounds.lower;
 
-		for (auto& cons : vtx_backward.constrains) {
-			new_time = max(new_time, this->time[cons.vertex]);
-		}
-		
-		if (check_ub && TIME_GREATER(new_time, vtx_time_bounds.upper)) {
-			return false;
+		auto& path = vtx_backward.path;
+		if (path.vertex >= 0) {
+			this->time[v_curr] = max(this->time[v_curr], 
+				this->time[path.vertex] + path.time);
 		}
 
-		if (!TIME_EQUAL(new_time, this->time[v_curr])) {
-			this->time_changes.push_back({v_curr, this->time[v_curr]});
-			this->time[v_curr] = new_time;
+		for (const auto& cons : vtx_backward.constrains) {
+			this->time[v_curr] = max(this->time[v_curr], 
+				this->time[cons.vertex] + cons.time);
 		}
 
-		int v_path = vtx_backward.path.vertex;
-		if (v_path >= 0 && this->get_update_flag(v_path)) {
-			in_deg[v_path] -= 1;
-			if (in_deg[v_path] == 0) {
-				this->dq.push_front(v_path); // prioritize same train for locality
+		this->dirty.set_false(v_curr);
+
+		// forward enque necessary
+		int v_path = vtx_forward.path;
+		if (v_path >= 0) {
+			if (this->visited.get(v_path)) {
+				n_dep[v_path] -= 1;
+				if (n_dep[v_path]) {
+					this->dq.push_front(v_path); // prioritize path for locallity
+				} 
 			}
-		};
+		}
 
-		for (auto& cons : vtx_backward.constrains) {
-			if (this->get_update_flag(cons.vertex)) {
-				in_deg[cons.vertex] -= 1;
-				if (in_deg[cons.vertex] == 0) {
-					this->dq.push_back(cons.vertex);
-				}
+		for (int v_cons: vtx_forward.constrains) {
+			if (this->visited.get(v_cons)) {
+				n_dep[v_cons] -= 1;
+				if (n_dep[v_cons]) {
+					this->dq.push_back(v_cons);
+				} 
 			}
 		}
 	}
-
-	return true;
+	
+	// check if the target node is updated
+	assert(!this->dirty.get(v_from));
 }
-
