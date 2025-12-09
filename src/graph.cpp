@@ -35,6 +35,15 @@ void Graph::clear_constrains()
 	}
 }
 
+
+void Graph::set_all_paths(const std::vector<std::vector<int>>& paths)
+{
+	for (auto& path : paths) {
+		this->set_path(path);
+	}
+}
+
+
 void Graph::set_path(const vector<int>& path)
 {
 	// assume path is valid, no checking is done
@@ -74,11 +83,37 @@ bool Graph::add_edge(const Edge& edge, const bool check_ub)
 	}
 
 	if (!this->update_time(check_ub)) {
-		this->restore_old_time();
+		this->restore_time_changes(this->time_changes);
 
 		return false;
 	}
+
+	this->forward[edge.vertex_from].constrains.push_back(edge.vertex_to);
+	this->backward[edge.vertex_from].constrains.push_back({
+		.vertex = edge.vertex_to,
+		.time = edge.time
+	});
+
+	return true;
 }
+
+bool Graph::remove_last_edge(const Edge& edge)
+{
+	auto& forward_cons = this->forward[edge.vertex_from].constrains;
+	auto& backward_cons = this->backward[edge.vertex_from].constrains;
+
+	if (forward_cons.back() != edge.vertex_to 
+		|| backward_cons.back().vertex != edge.vertex_from) {
+
+		return false;
+	}
+
+	forward_cons.pop_back();
+	backward_cons.pop_back();
+
+	return true;
+};
+
 
 
 bool Graph::find_updates(const int v_from, const int v_cycle)

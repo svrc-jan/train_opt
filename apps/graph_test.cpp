@@ -25,17 +25,7 @@ int main(int argc, char const *argv[])
 
 	vector<vector<int>> paths;
 	path_sel.select_all_paths_by_res_imp(paths);
-	graph.add_all_paths(paths);
-
-	if (!graph.make_order()) {
-		print("make order failed\n");
-		return 1;
-	}
-
-	if (!graph.make_time()) {
-		print("make time failed");
-		return 2;
-	}
+	graph.set_all_paths(paths);
 
 
 	return 0;
