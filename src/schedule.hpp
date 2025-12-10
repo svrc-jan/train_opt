@@ -37,10 +37,13 @@ private:
 	void make_res_edges(Res_edges& res_edges, const int res_idx, 
 		const Res_use& res_use1, const Res_use& res_use2);
 
+	inline int path_size(const int train_idx) const { return this->paths[train_idx].size(); }
 	inline int get_op(const Idx& idx);
 	inline TIME_T get_time_start(const Idx& idx);
 	inline TIME_T get_time_end(const Idx& idx);
 	inline TIME_T get_time_unlock(const Res_use& res_use);
+
+	int get_level_unlock(const int res_idx, const Idx& idx);
 
 	// aux
 	std::priority_queue<Event> prio_queue;

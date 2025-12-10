@@ -88,7 +88,7 @@ bool Schedule::process_from_start(Res_edges& res_edges)
 		
 		Event succ;
 		succ.idx = curr.idx.succ();
-		if (succ.idx.path < (int)this->paths[succ.idx.train].size()) {
+		if (succ.idx.path < this->path_size(succ.idx.train)) {
 			succ.time = this->get_time_start(succ.idx);
 
 			prio_queue.push(succ);
@@ -102,5 +102,11 @@ bool Schedule::process_from_start(Res_edges& res_edges)
 void Schedule::make_res_edges(Res_edges& res_edges, const int res_idx, 
 	const Res_use& res_use1, const Res_use& res_use2)
 {
+	
+}
 
+
+int Schedule::get_level_unlock(const int res_idx, const Idx& idx)
+{
+	
 }
