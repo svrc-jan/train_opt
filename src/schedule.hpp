@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <queue>
-#include <algorithm>
 
 #include "time_type.hpp"
 #include "graph.hpp"
@@ -12,8 +11,6 @@ class Schedule
 {
 public:
 	using Res_edges = std::pair<Graph::Edge, Graph::Edge>;
-	struct Res_use;
-	struct Res_interval;
 
 	Schedule(Graph& graph);
 
@@ -23,7 +20,9 @@ public:
 
 
 private:
+	struct Idx;
 	struct Event;
+	struct Res_use;
 
 	const Instance& inst;
 	const Preprocess& prepr;
@@ -33,62 +32,72 @@ private:
 	int n_res = 0;
 
 	std::vector<std::vector<int>> paths = {};
-	std::vector<std::vector<Res_use>> train_res_uses = {};
-	std::vector<int> train_ru_idx = {};
-	std::vector<std::vector<Res_interval>> res_intervals = {};
+	// std::vector<int> path_idx = {};
+
+	void make_res_edges(Res_edges& res_edges, const int res_idx, 
+		const Res_use& res_use1, const Res_use& res_use2);
+
+	inline int get_op(const Idx& idx);
+	inline TIME_T get_time_start(const Idx& idx);
+	inline TIME_T get_time_end(const Idx& idx);
+	inline TIME_T get_time_unlock(const Res_use& res_use);
 
 	// aux
-	std::vector<Res_interval> prio_queue;
+	std::priority_queue<Event> prio_queue;
+};
 
-	void update_res_inteval(Res_interval& ri);
-	void make_res_edges(Res_edges& res_edges, const Res_use& a, const Res_use& b);
-	inline const Res_use& get_res_use(const Res_interval& ri) const;
+
+struct Schedule::Idx
+{
+	int train = -1;
+	int path = -1;
+
+	Idx pred() const 
+	{ return {.train = this->train, .path = this->path - 1}; };
+
+	Idx succ() const 
+	{ return {.train = this->train, .path = this->path + 1}; };
+};
+
+struct Schedule::Event
+{
+	Idx idx = Idx();
+	TIME_T time = 0;
+
+	bool operator<(const Event& other) const
+	{ return this->time > other.time;}
 };
 
 
 struct Schedule::Res_use
 {
-	int res_idx = -1;
-	int level_lock = -1;
-	int level_unlock = -1;
+	Idx idx = Idx();
 	TIME_T res_time = 0;
-
-	inline bool operator<(const Res_use& other) const;
 };
 
 
-struct Schedule::Res_interval
+int Schedule::get_op(const Idx& idx)
 {
-	int train = -1;
-	int res_use_idx = -1;
-	TIME_T time_lock = 0;
-	TIME_T time_unlock = 0;
-
-	inline bool operator<(const Res_interval& other) const;
-};
-
-
-inline const Schedule::Res_use& Schedule::get_res_use(const Res_interval& ri) const
-{
-	return this->train_res_uses[ri.train][ri.res_use_idx];
+	const auto& path = this->paths[idx.train];
+	return (idx.path >= 0 && idx.path < (int)path.size()) ? path[idx.path] : -1;
 }
 
 
-bool Schedule::Res_use::operator<(const Res_use& other) const
+TIME_T Schedule::get_time_start(const Idx& idx)
 {
-	if (this->level_lock == other.level_lock) {
-		return this->level_unlock > this->level_unlock;
-	}
-	return this->level_unlock < this->level_unlock;
+	int level = this->prepr.op_level_start(this->get_op(idx));
+	return this->graph.get_time(level);
 }
 
 
-bool Schedule::Res_interval::operator<(const Res_interval& other) const
+TIME_T Schedule::get_time_end(const Idx& idx)
 {
-	if (this->time_lock == other.time_lock) {
-		return this->time_unlock < other.time_unlock;
-	}
-	return this->time_lock > other.time_lock;
+	int level = this->prepr.op_level_end(this->get_op(idx));
+	return this->graph.get_time(level);
 }
 
 
+TIME_T Schedule::get_time_unlock(const Res_use& res_use)
+{
+	return this->get_time_end(res_use.idx) + res_use.res_time;
+}

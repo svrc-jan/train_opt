@@ -26,6 +26,9 @@ public:
 	inline int n_trains() const { return this->trains.size(); }
 	inline int n_levels() const { return this->levels.size(); }
 
+	inline int op_level_start(int op) const { return this->op_level[op].first; }
+	inline int op_level_end(int op) const { return this->op_level[op].second; }
+
 private:
 
 	std::vector<int> level_ops_out = {};

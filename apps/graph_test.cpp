@@ -39,13 +39,16 @@ int main(int argc, char const *argv[])
 		int l2 = rng(prepr.n_levels());
 
 		if (prepr.levels[l1].train == prepr.levels[l2].train) {
-			// println("same train");
+			// println("iter {}: same train", i);
 			continue;
 		}
 
 		if (!graph.add_edge({l1, l2, 1})) {
-			// println("cycle!");
+			// println("iter {}: cycle!", i);
+			continue;
 		}
+		
+		assert(graph.get_time(l1) + 1 <= graph.get_time(l2));
 	}
 
 	double avg_delay = 0;

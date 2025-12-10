@@ -52,7 +52,6 @@ void Graph::set_all_paths(const vector<vector<int>>& paths)
 
 void Graph::set_path(const vector<int>& path)
 {
-
 	for (int i = 1; i < (int)path.size(); i++) {
 		assert(this->prepr.op_level[path[i-1]].second == this->prepr.op_level[path[i]].first);
 	}
@@ -61,7 +60,6 @@ void Graph::set_path(const vector<int>& path)
 	for (int o : path) {
 		this->set_path_op(o);
 	}
-
 
 	int v_path_start = this->prepr.op_level[path[0]].first;
 	int v_path_end = this->prepr.op_level[path.back()].second;
@@ -72,7 +70,7 @@ void Graph::set_path(const vector<int>& path)
 	this->backward[v_path_start].path = {.vertex = -1, .time = 0};
 	this->forward[v_path_end].path = -1;
 
-	this->mark_dirty(v_path_start);
+	this->mark_dirty_rec(v_path_start);
 }
 
 
@@ -95,7 +93,8 @@ void Graph::set_path_op(const int op)
 
 bool Graph::add_edge(const Edge& edge, const bool check_ub)
 {
-	if (!this->find_visited(edge.vertex_to, edge.vertex_from)) {
+	this->visited.clear();
+	if (!this->find_visited_rec(edge.vertex_to, edge.vertex_from)) {
 		return false;
 	}
 
@@ -137,11 +136,10 @@ bool Graph::remove_edge(const Edge& edge)
 		return false;
 	}
 
-	this->mark_dirty(edge.vertex_from);
+	this->mark_dirty_rec(edge.vertex_from);
 
 	return true;
 };
-
 
 bool Graph::find_visited(const int v_begin, const int v_cycle)
 {
@@ -248,8 +246,6 @@ void Graph::update_time(const int v_begin)
 		}
 	}
 
-	sort(this->need_update.begin(), this->need_update.end());
-
 	// cout << this->need_update << endl;
 
 #ifndef NO_VLA
@@ -338,6 +334,59 @@ void Graph::update_time(const int v_begin)
 	
 	// check if the target node is updated
 	assert(!this->dirty.get(v_begin));
+}
+
+
+bool Graph::find_visited_rec(const int v, const int v_cycle)
+{
+	if (v == v_cycle) {
+		return false;
+	}
+
+	if (this->visited.get(v)) {
+		return true;
+	}
+
+	this->visited.set_true(v);
+	const auto& vtx_forward = this->forward[v];
+
+	for (int v_cons : vtx_forward.constrains) {
+		if (!this->find_visited_rec(v_cons, v_cycle)) {
+			return false;
+		}
+	}
+
+	int v_path = vtx_forward.path;
+	if (v_path >= 0) {
+		if (!this->find_visited_rec(v_path, v_cycle)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+
+void Graph::mark_dirty_rec(const int v)
+{
+	if (this->dirty.get(v)) {
+		return;
+	}
+
+	this->dirty.set_true(v);
+
+	const auto& vtx_forward = this->forward[v];
+
+	int v_path = vtx_forward.path;
+	if (v_path >= 0) {
+		this->mark_dirty_rec(v_path);
+	}
+
+	for (int v_cons : vtx_forward.constrains) {
+		this->mark_dirty_rec(v_cons);
+	}
+
+	
 }
 
 

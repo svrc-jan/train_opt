@@ -52,9 +52,13 @@ private:
 	std::vector<int> need_update = {};
 
 	void set_path_op(const int op);
+
 	bool find_visited(const int v_begin, const int v_cycle);
 	void mark_dirty(const int v_begin);
 	void update_time(const int v_begin);
+	
+	bool find_visited_rec(const int v, const int v_cycle);
+	void mark_dirty_rec(const int v);
 	void update_time_rec(const int v);
 };
 
