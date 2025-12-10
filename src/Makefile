@@ -145,6 +145,20 @@ preprocess/fast:
 .PHONY : preprocess/fast
 
 # Convenience name for target.
+src/CMakeFiles/path_selector.dir/rule:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/path_selector.dir/rule
+.PHONY : src/CMakeFiles/path_selector.dir/rule
+
+# Convenience name for target.
+path_selector: src/CMakeFiles/path_selector.dir/rule
+.PHONY : path_selector
+
+# fast build rule for target.
+path_selector/fast:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/path_selector.dir/build.make src/CMakeFiles/path_selector.dir/build
+.PHONY : path_selector/fast
+
+# Convenience name for target.
 src/CMakeFiles/graph.dir/rule:
 	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/graph.dir/rule
 .PHONY : src/CMakeFiles/graph.dir/rule
@@ -159,18 +173,18 @@ graph/fast:
 .PHONY : graph/fast
 
 # Convenience name for target.
-src/CMakeFiles/path_selector.dir/rule:
-	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/path_selector.dir/rule
-.PHONY : src/CMakeFiles/path_selector.dir/rule
+src/CMakeFiles/schedule.dir/rule:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/schedule.dir/rule
+.PHONY : src/CMakeFiles/schedule.dir/rule
 
 # Convenience name for target.
-path_selector: src/CMakeFiles/path_selector.dir/rule
-.PHONY : path_selector
+schedule: src/CMakeFiles/schedule.dir/rule
+.PHONY : schedule
 
 # fast build rule for target.
-path_selector/fast:
-	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/path_selector.dir/build.make src/CMakeFiles/path_selector.dir/build
-.PHONY : path_selector/fast
+schedule/fast:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/schedule.dir/build.make src/CMakeFiles/schedule.dir/build
+.PHONY : schedule/fast
 
 # Convenience name for target.
 src/CMakeFiles/solver.dir/rule:
@@ -358,6 +372,30 @@ preprocess.cpp.s:
 	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/preprocess.dir/build.make src/CMakeFiles/preprocess.dir/preprocess.cpp.s
 .PHONY : preprocess.cpp.s
 
+schedule.o: schedule.cpp.o
+.PHONY : schedule.o
+
+# target to build an object file
+schedule.cpp.o:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/schedule.dir/build.make src/CMakeFiles/schedule.dir/schedule.cpp.o
+.PHONY : schedule.cpp.o
+
+schedule.i: schedule.cpp.i
+.PHONY : schedule.i
+
+# target to preprocess a source file
+schedule.cpp.i:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/schedule.dir/build.make src/CMakeFiles/schedule.dir/schedule.cpp.i
+.PHONY : schedule.cpp.i
+
+schedule.s: schedule.cpp.s
+.PHONY : schedule.s
+
+# target to generate assembly for a file
+schedule.cpp.s:
+	cd /home/jsv/Projects/train_opt && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/schedule.dir/build.make src/CMakeFiles/schedule.dir/schedule.cpp.s
+.PHONY : schedule.cpp.s
+
 solver.o: solver.cpp.o
 .PHONY : solver.o
 
@@ -396,6 +434,7 @@ help:
 	@echo "... lin_prog"
 	@echo "... path_selector"
 	@echo "... preprocess"
+	@echo "... schedule"
 	@echo "... solver"
 	@echo "... graph.o"
 	@echo "... graph.i"
@@ -415,6 +454,9 @@ help:
 	@echo "... preprocess.o"
 	@echo "... preprocess.i"
 	@echo "... preprocess.s"
+	@echo "... schedule.o"
+	@echo "... schedule.i"
+	@echo "... schedule.s"
 	@echo "... solver.o"
 	@echo "... solver.i"
 	@echo "... solver.s"

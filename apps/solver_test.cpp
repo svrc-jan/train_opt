@@ -49,7 +49,7 @@ int main(int argc, char const *argv[])
 
 	vector<double> train_order(inst.n_trains());
 	for (int t = 0; t < inst.n_trains(); t++) {
-		graph.add_path(t, paths[t]);
+		graph.set_path(paths[t]);
 		train_order[t] = ((double)t)/(inst.n_trains() - 1);
 	}
 
@@ -76,7 +76,7 @@ int main(int argc, char const *argv[])
 
 		// cout << train_prio << endl;
 
-		graph.clear_res_cons();
+		graph.clear_constrains();
 		if (!solver.solve_with_train_prio(train_prio)) {
 			break;
 		}
@@ -90,7 +90,7 @@ int main(int argc, char const *argv[])
 			auto& op_last = inst.ops[o_last];
 			int lvl_last = prepr.op_level[o_last].first;
 
-			double delay = graph.time[lvl_last] - op_last.start_lb;
+			double delay = op_last.start_lb;
 			delay_sum += delay;
 
 

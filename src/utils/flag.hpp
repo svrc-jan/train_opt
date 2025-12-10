@@ -1,13 +1,14 @@
 #pragma once
 
+#include <cstdio>
 #include <cstdint>
 #include <cstring>
 
 class Flag
 {
 public:
-	Flag(const int n_items=0);
-	~Flag();
+	inline Flag(const int n_items=0);
+	inline ~Flag();
 
 	inline void resize_for_items(const int n_items);
 	
@@ -19,6 +20,8 @@ public:
 	inline void update(const Flag& other);
 
 	static inline int get_required_size(const int n_items);
+
+	inline void print_state();
 
 private:
 	int size = 0;
@@ -80,19 +83,23 @@ void Flag::clear()
 
 bool Flag::get(int item)
 {
-	return (this->ptr[item/64] & (1 << (item % 64))) != 0;
+	return (this->ptr[item/64] & ((uint64_t)1 << (item % 64))) != 0;
 }
 
 
 void Flag::set_true(int item)
 {
-	this->ptr[item/64] |= (1 << (item % 64));
+	// printf("set true %d, ", item);
+	this->ptr[item/64] |= ((uint64_t)1 << (item % 64));
+	// this->print_state();
 }
 
 
 void Flag::set_false(int item)
 {
-	this->ptr[item/64] &= ~(1 << (item % 64));
+	// printf("set false %d, ", item);
+	this->ptr[item/64] &= ~((uint64_t)1 << (item % 64));
+	// this->print_state();
 }
 
 
@@ -101,4 +108,15 @@ void Flag::update(const Flag& other)
 	for (int i = 0; i < this->size; i++) {
 		this->ptr[i] |= other.ptr[i];
 	}
+}
+
+void Flag::print_state()
+{
+	printf("state: ");
+	for (int i = 0; i < 64*this->size; i++) {
+		if (this->get(i)) {
+			printf("%d%s", i, (i + 1 < 64*this->size) ? " " : "");
+		}
+	}
+	printf("\n");
 }

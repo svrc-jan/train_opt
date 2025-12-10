@@ -43,7 +43,10 @@ add_executable(path_selector_test apps/path_selector_test.cpp)
 target_link_libraries(path_selector_test path_selector)
 
 add_executable(graph_test apps/graph_test.cpp)
-target_link_libraries(graph_test graph path_selector)
+target_link_libraries(graph_test graph path_selector rand_int)
+
+add_executable(schedule_test apps/schedule_test.cpp)
+target_link_libraries(schedule_test schedule path_selector)
 
 add_executable(solver_test apps/solver_test.cpp)
 target_link_libraries(solver_test solver path_selector)
@@ -60,6 +63,7 @@ add_compile_options(-Wall -Wextra -g -DNO_VLA)
 target_compile_options(instance PRIVATE -O3)
 target_compile_options(preprocess PRIVATE -O3)
 target_compile_options(graph PRIVATE -O3)
+target_compile_options(schedule PRIVATE -O3)
 target_compile_options(solver PRIVATE -O3)
 
 

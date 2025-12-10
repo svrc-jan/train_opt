@@ -1,4 +1,4 @@
-app="build/solver_test"
+app="build/schedule_test"
 
 for file in data/*.json
 do

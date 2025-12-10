@@ -6,11 +6,14 @@ target_link_libraries(instance files)
 add_library(preprocess preprocess.cpp)
 target_link_libraries(preprocess instance disjoint_set)
 
+add_library(path_selector path_selector.cpp)
+target_link_libraries(path_selector instance)
+
 add_library(graph graph.cpp)
 target_link_libraries(graph preprocess instance)
 
-add_library(path_selector path_selector.cpp)
-target_link_libraries(path_selector instance)
+add_library(schedule schedule.cpp)
+target_link_libraries(schedule graph)
 
 add_library(solver solver.cpp)
 target_link_libraries(solver graph)
